@@ -35,6 +35,7 @@ def get_current_claims(
     try:
         return verify_jwt(token)
     except AuthError as e:
+        print(f"Auth error: {e.message}")
         raise HTTPException(e.status_code, e.message) from e
 
 

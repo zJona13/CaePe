@@ -41,7 +41,10 @@ def _decode_options() -> dict[str, Any]:
 
 
 def _decode_kwargs() -> dict[str, Any]:
-    kwargs: dict[str, Any] = {"algorithms": settings.jwt_algorithms_list}
+    kwargs: dict[str, Any] = {
+        "algorithms": settings.jwt_algorithms_list,
+        "leeway": settings.supabase_jwt_leeway_seconds,
+    }
     if settings.supabase_jwt_audience:
         kwargs["audience"] = settings.supabase_jwt_audience
     if settings.supabase_jwt_issuer:

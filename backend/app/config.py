@@ -11,8 +11,9 @@ class Settings(BaseSettings):
     supabase_jwks_url: str = ""
     supabase_jwt_audience: str = "authenticated"
     supabase_jwt_issuer: str = ""
-    supabase_jwt_algorithms: str = "RS256,ES256"
+    supabase_jwt_algorithms: str = "HS256,RS256,ES256"
     supabase_jwt_secret: str = ""
+    supabase_jwt_leeway_seconds: int = 60
 
     @property
     def jwt_algorithms_list(self) -> list[str]:
