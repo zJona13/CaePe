@@ -77,6 +77,7 @@ export default function NewEvent() {
   });
 
   const { fields, append, remove } = useFieldArray({ control, name: 'participants' });
+  const watchedGroupId = useWatch({ control, name: 'group_id' });
 
   useEffect(() => {
     if (selectedPlan) {
@@ -84,6 +85,12 @@ export default function NewEvent() {
       setValue('location', selectedPlan.location ?? '');
     }
   }, [selectedPlan, setValue]);
+
+  useEffect(() => {
+    if (!params.groupId && groups.data && groups.data.length > 0) {
+      setValue('group_id', groups.data[0].id);
+    }
+  }, [groups.data, params.groupId, setValue]);
 
   const [showDate, setShowDate] = useState(false);
   const [showTime, setShowTime] = useState(false);
@@ -194,9 +201,9 @@ export default function NewEvent() {
         </Pressable>
 
         {submitErr && <Text style={styles.err}>{submitErr}</Text>}
-        {!initialGroupId && <Text style={styles.err}>Crea una collera primero.</Text>}
+        {!watchedGroupId && <Text style={styles.err}>Crea una collera primero.</Text>}
 
-        <PrimaryButton label={SLANG.ctaConfirmEvent} onPress={onSubmit} loading={createEvent.isPending} disabled={!initialGroupId} />
+        <PrimaryButton label={SLANG.ctaConfirmEvent} onPress={onSubmit} loading={createEvent.isPending} disabled={!watchedGroupId} />
       </ScrollView>
     </SafeAreaView>
   );
