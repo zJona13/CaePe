@@ -35,15 +35,25 @@ function buildUrl(path: string, query?: RequestOptions['query']): string {
 export async function apiRequest<T>(path: string, opts: RequestOptions = {}): Promise<T> {
   const { method = 'GET', body, query, auth = true, token: explicitToken } = opts;
   const token = explicitToken ?? useSession.getState().token;
+  const url = buildUrl(path, query);
 
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };
   if (auth && token) headers.Authorization = `Bearer ${token}`;
 
-  const res = await fetch(buildUrl(path, query), {
-    method,
-    headers,
-    body: body !== undefined ? JSON.stringify(body) : undefined,
-  });
+  let res: Response;
+  try {
+    res = await fetch(url, {
+      method,
+      headers,
+      body: body !== undefined ? JSON.stringify(body) : undefined,
+    });
+  } catch (error) {
+    throw new ApiError(
+      0,
+      `No se pudo conectar con el backend en ${BASE_URL}. Revisa que FastAPI este corriendo y que EXPO_PUBLIC_API_URL sea accesible desde Android.`,
+      error,
+    );
+  }
 
   let parsed: unknown = null;
   const text = await res.text();

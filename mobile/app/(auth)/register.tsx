@@ -21,6 +21,16 @@ type FormValues = {
   payment_number: string;
 };
 
+function getRegisterErrorMessage(error: unknown) {
+  const message = error instanceof Error ? error.message : 'No se pudo crear la cuenta';
+
+  if (message.toLowerCase().includes('email signups are disabled')) {
+    return 'El registro con email está desactivado en Supabase. Activa el proveedor Email y deja apagada la confirmación de email.';
+  }
+
+  return message;
+}
+
 export default function Register() {
   const { control, handleSubmit, formState: { errors } } = useForm<FormValues>({
     defaultValues: { name: '', email: '', password: '', payment_method: 'yape', payment_number: '' },
@@ -44,7 +54,7 @@ export default function Register() {
       setSession(user, token);
       router.replace('/(tabs)/home');
     } catch (e) {
-      setError((e as Error).message);
+      setError(getRegisterErrorMessage(e));
     } finally { setLoading(false); }
   });
 
