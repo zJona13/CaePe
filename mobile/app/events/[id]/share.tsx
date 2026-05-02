@@ -1,4 +1,5 @@
 import { useLocalSearchParams } from 'expo-router';
+import { useEffect } from 'react';
 import { ActivityIndicator, Linking, Share, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Clipboard from 'expo-clipboard';
@@ -13,6 +14,11 @@ import { typography } from '../../../theme/typography';
 export default function ShareScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const share = useShareMessage(id);
+  const trigger = share.mutate;
+
+  useEffect(() => {
+    if (id) trigger();
+  }, [id, trigger]);
 
   const openWhatsapp = async () => {
     if (!share.data) return;
@@ -25,7 +31,7 @@ export default function ShareScreen() {
     if (share.data) await Clipboard.setStringAsync(share.data.message);
   };
 
-  if (share.isLoading || !share.data) {
+  if (share.isPending || !share.data) {
     return <SafeAreaView style={styles.center}><ActivityIndicator color={colors.primary} /></SafeAreaView>;
   }
 

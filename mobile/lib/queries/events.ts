@@ -80,12 +80,11 @@ export function useCreateEvent() {
 }
 
 export function useShareMessage(eventId: string | undefined) {
-  return useQuery({
-    queryKey: ['event', eventId, 'share-message'],
-    enabled: !!eventId,
-    queryFn: () => apiRequest<{ message: string; invite_code: string }>(
-      `/events/${eventId}/share-message`,
-      { method: 'POST' as never },
-    ),
+  return useMutation({
+    mutationFn: () =>
+      apiRequest<{ message: string; invite_code: string }>(
+        `/events/${eventId}/share-message`,
+        { method: 'POST' },
+      ),
   });
 }
