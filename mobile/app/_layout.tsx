@@ -12,9 +12,11 @@ function AuthGuard() {
   const seenOnboarding = useSession((s) => s.seenOnboarding);
 
   useEffect(() => {
-    const segs = segments as string[];
+    const segs = segments as unknown as string[];
     const inAuthGroup = segs[0] === '(auth)';
-    const isPublicEvent = segs[0] === 'events' && segs[2] === undefined;
+    const isPublicEvent =
+      segs[0] === 'events' &&
+      (segs[2] === undefined || segs[2] === 'funded');
     // Expo router for /events/[id]/index resolves to segments = ['events', '<id>'] (index is collapsed)
 
     if (!token) {
