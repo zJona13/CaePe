@@ -29,6 +29,8 @@ export type EventDetail = {
   status: EventStatus;
   created_at: string;
   participants: EventParticipant[];
+  organizer_payment_method: 'yape' | 'plin' | null;
+  organizer_payment_number: string | null;
 };
 
 export type EventListItem = Omit<EventDetail, 'participants'>;

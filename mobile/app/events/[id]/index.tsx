@@ -32,8 +32,8 @@ export default function EventDetail() {
   const e = event.data;
   const isOrganizer = user?.id === e.organizer_id;
   const isGuest = !user;
-  const payMethod = isOrganizer ? user?.payment_method : null;
-  const payNumber = isOrganizer ? user?.payment_number : null;
+  const payMethod = e.organizer_payment_method;
+  const payNumber = e.organizer_payment_number;
 
   const copyNumber = async () => { if (payNumber) await Clipboard.setStringAsync(payNumber); };
 
