@@ -1,0 +1,24 @@
+{
+  "expo": {
+    "name": "CaePe",
+    "slug": "caepe",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "scheme": "caepe",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.caepe.app"
+    },
+    "android": {
+      "package": "com.caepe.app"
+    },
+    "plugins": [
+      "expo-router"
+    ],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}

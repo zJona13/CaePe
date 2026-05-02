@@ -1,50 +1,92 @@
-# Welcome to your Expo app 👋
+# CaePe
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+App social móvil para jóvenes peruanos (18–30): organizar salidas grupales, dividir presupuesto, confirmar pagos. La app NO retiene dinero — Yape/Plin externos.
 
-## Get started
+## Estructura
 
-1. Install dependencies
-
-   ```bash
-   npm install
-   ```
-
-2. Start the app
-
-   ```bash
-   npx expo start
-   ```
-
-In the output, you'll find options to open the app in a
-
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
-
-```bash
-npm run reset-project
+```
+caepe/
+├── backend/   # FastAPI + Python 3.11
+└── mobile/    # Expo SDK 54 + React Native + TypeScript
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+## Requisitos
 
-## Learn more
+- Python 3.11+
+- Node.js 20+
+- npm (o pnpm/yarn)
 
-To learn more about developing your project with Expo, look at the following resources:
+---
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+## Backend
 
-## Join the community
+### 1. Instalar dependencias
 
-Join our community of developers creating universal apps.
+```bash
+cd backend
+python -m venv .venv
+# Windows (Git Bash):
+source .venv/Scripts/activate
+# macOS/Linux:
+# source .venv/bin/activate
+pip install -r requirements.txt
+```
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+### 2. Levantar servidor
+
+```bash
+uvicorn app.main:app --reload
+```
+
+→ http://localhost:8000
+
+### 3. Verificar `/health`
+
+```bash
+curl http://localhost:8000/health
+# {"status":"ok"}
+```
+
+### 4. Tests
+
+```bash
+pytest
+```
+
+---
+
+## Mobile
+
+### 1. Instalar dependencias
+
+```bash
+cd mobile
+npm install
+```
+
+### 2. Configurar API
+
+```bash
+cp .env.example .env
+# Edita EXPO_PUBLIC_API_URL si el backend corre en otra dirección
+```
+
+> Nota: para correr en dispositivo físico, reemplaza `localhost` por la IP LAN de tu máquina (ej. `http://192.168.1.10:8000`).
+
+### 3. Arrancar Expo
+
+```bash
+npx expo start
+```
+
+Escanea el QR con Expo Go (Android/iOS). El Home muestra el resultado de `GET /health` del backend.
+
+---
+
+## Fases del proyecto
+
+- **Fase 0** (actual): scaffolding monorepo
+- Fase 1: data layer + auth Supabase + seed planes Chiclayo
+- Fase 2: core MVP (grupos, eventos, participantes, pagos)
+- Fase 3: 13 pantallas mobile
+- Fase 4: notificaciones FCM + métricas + deploy Cloud Run + EAS
