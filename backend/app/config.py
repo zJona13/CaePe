@@ -7,5 +7,16 @@ class Settings(BaseSettings):
     app_name: str = "CaePe Backend"
     database_url: str = "postgresql+psycopg://caepe:caepe@localhost:5432/caepe"
 
+    supabase_url: str = ""
+    supabase_jwks_url: str = ""
+    supabase_jwt_audience: str = "authenticated"
+    supabase_jwt_issuer: str = ""
+    supabase_jwt_algorithms: str = "RS256,ES256"
+    supabase_jwt_secret: str = ""
+
+    @property
+    def jwt_algorithms_list(self) -> list[str]:
+        return [a.strip() for a in self.supabase_jwt_algorithms.split(",") if a.strip()]
+
 
 settings = Settings()
