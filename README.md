@@ -32,7 +32,29 @@ source .venv/Scripts/activate
 pip install -r requirements.txt
 ```
 
-### 2. Levantar servidor
+### 2. Configurar entorno
+
+```bash
+cp .env.example .env
+# Edita DATABASE_URL y SUPABASE_* (URL del proyecto + JWKS_URL + audience/issuer).
+```
+
+### 3. Migraciones (Postgres)
+
+```bash
+alembic upgrade head
+```
+
+### 4. Seed planes Chiclayo
+
+```bash
+uvicorn app.main:app --reload &
+curl -X POST http://localhost:8000/plans/seed
+# {"inserted":30,"total":30}
+# Segunda llamada → {"inserted":0,"total":30} (idempotente).
+```
+
+### 5. Levantar servidor
 
 ```bash
 uvicorn app.main:app --reload
@@ -40,18 +62,29 @@ uvicorn app.main:app --reload
 
 → http://localhost:8000
 
-### 3. Verificar `/health`
+### 6. Verificar `/health`
 
 ```bash
 curl http://localhost:8000/health
 # {"status":"ok"}
 ```
 
-### 4. Tests
+### 7. Endpoints disponibles
+
+- `GET /health`
+- `GET /auth/me` (Bearer JWT Supabase)
+- `POST /auth/register`, `POST /auth/login`
+- `GET /plans` (filtros: `category`, `price_min`, `price_max`, `city`, `is_active`)
+- `GET /plans/random` (mismos filtros)
+- `POST /plans/seed`
+
+### 8. Tests
 
 ```bash
 pytest
 ```
+
+> Tests usan SQLite in-memory + JWT HS256 con secret de prueba — no requieren Postgres ni Supabase.
 
 ---
 
@@ -85,8 +118,8 @@ Escanea el QR con Expo Go (Android/iOS). El Home muestra el resultado de `GET /h
 
 ## Fases del proyecto
 
-- **Fase 0** (actual): scaffolding monorepo
-- Fase 1: data layer + auth Supabase + seed planes Chiclayo
+- Fase 0: scaffolding monorepo
+- **Fase 1** (actual): data layer + auth Supabase + seed planes Chiclayo
 - Fase 2: core MVP (grupos, eventos, participantes, pagos)
 - Fase 3: 13 pantallas mobile
 - Fase 4: notificaciones FCM + métricas + deploy Cloud Run + EAS
