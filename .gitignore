@@ -38,3 +38,6 @@ mobile/npm-debug.*
 mobile/yarn-debug.*
 mobile/yarn-error.*
 mobile/expo-env.d.ts
+node_modules
+
+claude.md
