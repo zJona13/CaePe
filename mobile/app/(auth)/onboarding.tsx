@@ -1,6 +1,6 @@
 import { router } from 'expo-router';
 import type { ReactNode } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Image, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Sparkles, Users, Wallet } from 'lucide-react-native';
 import { PrimaryButton } from '../../components/PrimaryButton';
@@ -20,15 +20,12 @@ export default function Onboarding() {
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       <View style={styles.heroWrap}>
-        <View style={styles.shapeStack}>
-          <View style={[styles.shape, styles.shapePurple]} />
-          <View style={[styles.shape, styles.shapeLime]} />
-          <View style={[styles.shape, styles.shapeTeal]}>
-            <Users size={56} color={colors.surface} strokeWidth={2.4} />
-          </View>
-        </View>
-
-        <Text style={styles.brand}>CaePe</Text>
+        <Image
+          source={require('../../assets/logo.png')}
+          style={styles.logo}
+          resizeMode="contain"
+          accessibilityLabel="CaePe"
+        />
         <Text style={styles.tagline}>{SLANG.tagline}</Text>
 
         <View style={styles.bullets}>
@@ -58,12 +55,7 @@ function Bullet({ icon, bg, text }: { icon: ReactNode; bg: string; text: string 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background, paddingHorizontal: spacing.xl, paddingVertical: spacing.lg, justifyContent: 'space-between' },
   heroWrap: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: spacing.lg },
-  shapeStack: { width: 180, height: 180, alignItems: 'center', justifyContent: 'center' },
-  shape: { position: 'absolute', borderRadius: 60 },
-  shapePurple: { width: 140, height: 140, backgroundColor: colors.secondary, top: 0, left: 0, transform: [{ rotate: '-12deg' }] },
-  shapeLime: { width: 140, height: 140, backgroundColor: colors.accent, bottom: 0, right: 0, transform: [{ rotate: '14deg' }] },
-  shapeTeal: { width: 130, height: 130, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center', borderRadius: radius.full },
-  brand: { ...typography.display, fontSize: 56, color: colors.textPrimary, letterSpacing: -1 },
+  logo: { width: 220, height: 220 },
   tagline: { ...typography.body, color: colors.textSecondary, textAlign: 'center', maxWidth: 320 },
   bullets: { gap: spacing.sm, alignSelf: 'stretch', marginTop: spacing.md },
   bullet: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, backgroundColor: colors.surface, padding: spacing.md, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border },

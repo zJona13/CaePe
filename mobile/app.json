@@ -7,12 +7,22 @@
     "scheme": "caepe",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
+    "icon": "./assets/icon.png",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#F4F8FB"
+    },
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "com.caepe.app"
     },
     "android": {
-      "package": "com.caepe.app"
+      "package": "com.caepe.app",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#F4F8FB"
+      }
     },
     "plugins": [
       "expo-router",
