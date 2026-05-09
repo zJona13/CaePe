@@ -1,15 +1,16 @@
 import { router, Link } from 'expo-router';
 import { Controller, useForm } from 'react-hook-form';
 import { useState } from 'react';
-import { StyleSheet, Text, TextInput } from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Input } from '../../components/Input';
 import { PrimaryButton } from '../../components/PrimaryButton';
+import { ScreenHeader } from '../../components/ScreenHeader';
 import { fetchMe } from '../../lib/queries/auth';
 import { supabase } from '../../lib/supabase';
 import { useSession } from '../../lib/store';
 import { SLANG } from '../../lib/slang';
 import { colors } from '../../theme/colors';
-import { radius } from '../../theme/radius';
 import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
 
@@ -38,62 +39,63 @@ export default function Login() {
   });
 
   return (
-    <SafeAreaView style={styles.container}>
-      <Text style={styles.title}>Entrar</Text>
+    <SafeAreaView style={styles.container} edges={['top']}>
+      <ScreenHeader title="Bienvenido de vuelta" subtitle="Entra y sigue armando planes" />
+      <ScrollView contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled">
+        <Controller
+          control={control}
+          name="email"
+          rules={{ required: 'Email requerido' }}
+          render={({ field: { value, onChange, onBlur } }) => (
+            <Input
+              label="Email"
+              placeholder="tu@email.com"
+              keyboardType="email-address"
+              autoCapitalize="none"
+              autoComplete="email"
+              textContentType="emailAddress"
+              value={value}
+              onChangeText={onChange}
+              onBlur={onBlur}
+              error={errors.email?.message}
+            />
+          )}
+        />
 
-      <Controller
-        control={control}
-        name="email"
-        rules={{ required: 'Email requerido' }}
-        render={({ field: { value, onChange, onBlur } }) => (
-          <TextInput
-            placeholder="email"
-            keyboardType="email-address"
-            autoCapitalize="none"
-            value={value}
-            onChangeText={onChange}
-            onBlur={onBlur}
-            style={styles.input}
-            placeholderTextColor={colors.textSecondary}
-          />
-        )}
-      />
-      {errors.email && <Text style={styles.err}>{errors.email.message}</Text>}
+        <Controller
+          control={control}
+          name="password"
+          rules={{ required: 'Contraseña requerida', minLength: { value: 6, message: 'Mín 6 caracteres' } }}
+          render={({ field: { value, onChange, onBlur } }) => (
+            <Input
+              label="Contraseña"
+              placeholder="••••••"
+              secureTextEntry
+              autoComplete="password"
+              textContentType="password"
+              value={value}
+              onChangeText={onChange}
+              onBlur={onBlur}
+              error={errors.password?.message}
+            />
+          )}
+        />
 
-      <Controller
-        control={control}
-        name="password"
-        rules={{ required: 'Contraseña requerida', minLength: { value: 6, message: 'Mín 6 caracteres' } }}
-        render={({ field: { value, onChange, onBlur } }) => (
-          <TextInput
-            placeholder="contraseña"
-            secureTextEntry
-            value={value}
-            onChangeText={onChange}
-            onBlur={onBlur}
-            style={styles.input}
-            placeholderTextColor={colors.textSecondary}
-          />
-        )}
-      />
-      {errors.password && <Text style={styles.err}>{errors.password.message}</Text>}
+        {error ? <Text style={styles.err}>{error}</Text> : null}
 
-      {error && <Text style={styles.err}>{error}</Text>}
-
-      <PrimaryButton label={SLANG.ctaEnter} onPress={onSubmit} loading={loading} />
-
-      <Link href="/(auth)/register" style={styles.link}>¿Nuevo? Crear cuenta</Link>
+        <View style={styles.actions}>
+          <PrimaryButton label={SLANG.ctaEnter} onPress={onSubmit} loading={loading} />
+          <Link href="/(auth)/register" style={styles.link}>¿Nuevo en CaePe? Crea tu cuenta</Link>
+        </View>
+      </ScrollView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background, padding: spacing.xl, gap: spacing.md },
-  title: { ...typography.h1, color: colors.textPrimary, marginBottom: spacing.lg },
-  input: {
-    backgroundColor: colors.surface, borderRadius: radius.md, padding: spacing.md,
-    borderWidth: 1, borderColor: colors.border, color: colors.textPrimary, ...typography.body,
-  },
-  err: { color: colors.error, ...typography.caption },
-  link: { color: colors.primary, marginTop: spacing.lg, textAlign: 'center', ...typography.body },
+  container: { flex: 1, backgroundColor: colors.background },
+  body: { padding: spacing.lg, gap: spacing.md, paddingBottom: spacing.xxxl },
+  actions: { gap: spacing.md, marginTop: spacing.lg },
+  err: { ...typography.caption, color: colors.error, textAlign: 'center' },
+  link: { ...typography.bodyMedium, color: colors.primary, textAlign: 'center' },
 });

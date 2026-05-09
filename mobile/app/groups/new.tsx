@@ -1,13 +1,17 @@
 import { router } from 'expo-router';
 import { Controller, useForm } from 'react-hook-form';
 import { useState } from 'react';
-import { Linking, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Linking, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Check, Users } from 'lucide-react-native';
+import { Input } from '../../components/Input';
 import { PrimaryButton } from '../../components/PrimaryButton';
+import { ScreenHeader } from '../../components/ScreenHeader';
 import { useCreateGroup, type Group } from '../../lib/queries/groups';
 import { SLANG } from '../../lib/slang';
 import { colors } from '../../theme/colors';
 import { radius } from '../../theme/radius';
+import { shadows } from '../../theme/shadows';
 import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
 
@@ -32,40 +36,75 @@ export default function NewGroup() {
 
   if (created) {
     return (
-      <SafeAreaView style={styles.container}>
-        <Text style={styles.title}>¡Grupo armado!</Text>
-        <View style={styles.codeCard}>
-          <Text style={styles.label}>Código de invitación</Text>
-          <Text style={styles.code}>{created.invite_code}</Text>
+      <SafeAreaView style={styles.container} edges={['top']}>
+        <ScreenHeader />
+        <View style={styles.body}>
+          <View style={styles.successIconWrap}>
+            <View style={styles.successRing} />
+            <View style={styles.successIcon}><Check size={48} color={colors.surface} strokeWidth={3} /></View>
+          </View>
+          <Text style={styles.successTitle}>¡Grupo armado!</Text>
+          <Text style={styles.successBody}>Comparte el código y mete a la mancha</Text>
+
+          <View style={styles.codeCard}>
+            <Text style={styles.codeLabel}>Código de invitación</Text>
+            <Text style={styles.code}>{created.invite_code}</Text>
+            <Text style={styles.codeHelper}>{created.name}</Text>
+          </View>
+
+          <View style={styles.actions}>
+            <PrimaryButton label={SLANG.ctaShare} onPress={() => shareWhatsapp(created)} />
+            <PrimaryButton variant="ghost" label="Ir al grupo" onPress={() => router.replace({ pathname: '/groups/[id]', params: { id: created.id } })} />
+          </View>
         </View>
-        <PrimaryButton label={SLANG.ctaShare} onPress={() => shareWhatsapp(created)} />
-        <PrimaryButton variant="ghost" label="Ir al grupo" onPress={() => router.replace({ pathname: '/groups/[id]', params: { id: created.id } })} />
       </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView style={styles.container}>
-      <Text style={styles.title}>Nuevo Grupo</Text>
-      <Controller control={control} name="name" rules={{ required: 'Nombre requerido' }}
-        render={({ field: { value, onChange } }) => (
-          <TextInput placeholder="nombre del grupo" value={value} onChangeText={onChange} style={styles.input} placeholderTextColor={colors.textSecondary} />
-        )}
-      />
-      {errors.name && <Text style={styles.err}>{errors.name.message}</Text>}
-      {createGroup.isError && <Text style={styles.err}>{SLANG.errorGeneric}</Text>}
+    <SafeAreaView style={styles.container} edges={['top']}>
+      <ScreenHeader title="Nuevo grupo" subtitle="Junta a tu mancha en un toque" />
+      <ScrollView contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled">
+        <View style={styles.heroIcon}>
+          <Users size={48} color={colors.secondary} strokeWidth={2.2} />
+        </View>
 
-      <PrimaryButton label={SLANG.ctaCreateGroup} onPress={onSubmit} loading={createGroup.isPending} />
+        <Controller control={control} name="name" rules={{ required: 'Nombre requerido' }}
+          render={({ field: { value, onChange } }) => (
+            <Input
+              label="Nombre del grupo"
+              placeholder="Ej. Los broders, Familia, Trabajo..."
+              value={value}
+              onChangeText={onChange}
+              error={errors.name?.message}
+            />
+          )}
+        />
+        {createGroup.isError ? <Text style={styles.err}>{SLANG.errorGeneric}</Text> : null}
+
+        <View style={{ marginTop: spacing.md }}>
+          <PrimaryButton label={SLANG.ctaCreateGroup} onPress={onSubmit} loading={createGroup.isPending} />
+        </View>
+      </ScrollView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background, padding: spacing.xl, gap: spacing.md },
-  title: { ...typography.h1, color: colors.textPrimary, marginBottom: spacing.md },
-  input: { backgroundColor: colors.surface, borderRadius: radius.md, padding: spacing.md, borderWidth: 1, borderColor: colors.border, color: colors.textPrimary, ...typography.body },
-  err: { color: colors.error, ...typography.caption },
-  codeCard: { backgroundColor: colors.surface, padding: spacing.lg, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.border, gap: spacing.xs, alignItems: 'center' },
-  label: { ...typography.caption, color: colors.textSecondary },
-  code: { ...typography.h1, color: colors.primary, letterSpacing: 4 },
+  container: { flex: 1, backgroundColor: colors.background },
+  body: { padding: spacing.lg, gap: spacing.md, alignItems: 'stretch' },
+  heroIcon: { alignSelf: 'center', width: 96, height: 96, borderRadius: radius.full, backgroundColor: colors.secondarySoft, alignItems: 'center', justifyContent: 'center', marginVertical: spacing.lg },
+  err: { ...typography.caption, color: colors.error, textAlign: 'center' },
+
+  successIconWrap: { width: 140, height: 140, alignSelf: 'center', alignItems: 'center', justifyContent: 'center', marginBottom: spacing.md },
+  successRing: { position: 'absolute', width: 140, height: 140, borderRadius: radius.full, backgroundColor: colors.accentSoft },
+  successIcon: { width: 100, height: 100, borderRadius: radius.full, backgroundColor: colors.accent, alignItems: 'center', justifyContent: 'center', ...shadows.elevated },
+  successTitle: { ...typography.h1, color: colors.textPrimary, textAlign: 'center' },
+  successBody: { ...typography.body, color: colors.textSecondary, textAlign: 'center' },
+
+  codeCard: { backgroundColor: colors.surface, padding: spacing.xl, borderRadius: radius.lg, gap: spacing.xs, alignItems: 'center', borderWidth: 2, borderColor: colors.primary, borderStyle: 'dashed', marginVertical: spacing.lg },
+  codeLabel: { ...typography.captionBold, color: colors.textSecondary, textTransform: 'uppercase' },
+  code: { fontSize: 32, fontWeight: '800', color: colors.primary, letterSpacing: 6 },
+  codeHelper: { ...typography.caption, color: colors.textSecondary },
+  actions: { gap: spacing.sm },
 });

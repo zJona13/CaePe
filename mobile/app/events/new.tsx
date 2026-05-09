@@ -1,17 +1,21 @@
 import { router, useLocalSearchParams } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import { Controller, useFieldArray, useForm, useWatch, type Control } from 'react-hook-form';
-import { Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import { PrimaryButton } from '../../components/PrimaryButton';
+import { Calendar, Clock, MapPin, Plus, Wallet, X } from 'lucide-react-native';
+import { Input } from '../../components/Input';
 import { PlanCard } from '../../components/PlanCard';
+import { PrimaryButton } from '../../components/PrimaryButton';
+import { ScreenHeader } from '../../components/ScreenHeader';
 import { useGroups } from '../../lib/queries/groups';
 import { useCreateEvent, type CreateEventBody } from '../../lib/queries/events';
 import { usePlans } from '../../lib/queries/plans';
 import { SLANG } from '../../lib/slang';
 import { colors } from '../../theme/colors';
 import { radius } from '../../theme/radius';
+import { shadows } from '../../theme/shadows';
 import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
 
@@ -40,9 +44,12 @@ function LiveAmount({ control }: { control: Control<FormValues> }) {
   const n = participants.length || 1;
   return (
     <View style={styles.amountCard}>
-      <Text style={styles.amountLabel}>Monto por persona</Text>
-      <Text style={styles.amount}>S/ {calcAmount(total ?? '0', n)}</Text>
-      <Text style={styles.amountMeta}>{n} {n === 1 ? 'persona' : 'personas'}</Text>
+      <View style={styles.amountBlob} />
+      <View style={styles.amountContent}>
+        <Text style={styles.amountLabel}>Monto por persona</Text>
+        <Text style={styles.amount}>S/ {calcAmount(total ?? '0', n)}</Text>
+        <Text style={styles.amountMeta}>{n} {n === 1 ? 'persona' : 'personas'} · presupuesto S/ {total || '0'}</Text>
+      </View>
     </View>
   );
 }
@@ -117,93 +124,133 @@ export default function NewEvent() {
   });
 
   return (
-    <SafeAreaView style={styles.container}>
-      <ScrollView contentContainerStyle={{ padding: spacing.lg, gap: spacing.md, paddingBottom: spacing.xxxl }}>
-        <Text style={styles.title}>{SLANG.ctaCreateEvent}</Text>
+    <SafeAreaView style={styles.container} edges={['top']}>
+      <ScreenHeader title={SLANG.ctaCreateEvent} subtitle="Llena lo básico, calculamos el monto al toque" />
+      <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+        {selectedPlan ? <PlanCard plan={selectedPlan} /> : null}
 
-        {selectedPlan && <PlanCard plan={selectedPlan} />}
-
-        <Text style={styles.label}>Nombre del evento</Text>
         <Controller control={control} name="name" rules={{ required: 'Nombre requerido' }}
           render={({ field: { value, onChange } }) => (
-            <TextInput value={value} onChangeText={onChange} style={styles.input} placeholderTextColor={colors.textSecondary} />
+            <Input label="Nombre del evento" placeholder="Ej. Sábado parrilla" value={value} onChangeText={onChange} error={errors.name?.message} />
           )}
         />
-        {errors.name && <Text style={styles.err}>{errors.name.message}</Text>}
 
-        <Text style={styles.label}>Fecha</Text>
-        <Controller control={control} name="date" render={({ field: { value, onChange } }) => (
-          <>
-            <Pressable style={styles.input} onPress={() => setShowDate(true)}>
-              <Text style={{ color: value ? colors.textPrimary : colors.textSecondary }}>
-                {value ? value.toLocaleDateString('es-PE') : 'Seleccionar fecha'}
-              </Text>
-            </Pressable>
-            {showDate && (
-              <DateTimePicker
-                value={value ?? new Date()}
-                mode="date"
-                onChange={(_, d) => { setShowDate(Platform.OS === 'ios'); if (d) onChange(d); }}
-              />
-            )}
-          </>
-        )} />
+        <View style={styles.fieldRow}>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.label}>Fecha</Text>
+            <Controller control={control} name="date" render={({ field: { value, onChange } }) => (
+              <>
+                <Pressable
+                  style={({ pressed }) => [styles.pickerInput, pressed && { opacity: 0.85 }]}
+                  onPress={() => setShowDate(true)}
+                >
+                  <Calendar size={18} color={colors.primary} strokeWidth={2.4} />
+                  <Text style={[styles.pickerText, { color: value ? colors.textPrimary : colors.textMuted }]}>
+                    {value ? value.toLocaleDateString('es-PE') : 'Seleccionar'}
+                  </Text>
+                </Pressable>
+                {showDate && (
+                  <DateTimePicker
+                    value={value ?? new Date()}
+                    mode="date"
+                    onChange={(_, d) => { setShowDate(Platform.OS === 'ios'); if (d) onChange(d); }}
+                  />
+                )}
+              </>
+            )} />
+          </View>
 
-        <Text style={styles.label}>Hora</Text>
-        <Controller control={control} name="time" render={({ field: { value, onChange } }) => (
-          <>
-            <Pressable style={styles.input} onPress={() => setShowTime(true)}>
-              <Text style={{ color: value ? colors.textPrimary : colors.textSecondary }}>
-                {value ? value.toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit' }) : 'Seleccionar hora'}
-              </Text>
-            </Pressable>
-            {showTime && (
-              <DateTimePicker
-                value={value ?? new Date()}
-                mode="time"
-                onChange={(_, d) => { setShowTime(Platform.OS === 'ios'); if (d) onChange(d); }}
-              />
-            )}
-          </>
-        )} />
+          <View style={{ flex: 1 }}>
+            <Text style={styles.label}>Hora</Text>
+            <Controller control={control} name="time" render={({ field: { value, onChange } }) => (
+              <>
+                <Pressable
+                  style={({ pressed }) => [styles.pickerInput, pressed && { opacity: 0.85 }]}
+                  onPress={() => setShowTime(true)}
+                >
+                  <Clock size={18} color={colors.primary} strokeWidth={2.4} />
+                  <Text style={[styles.pickerText, { color: value ? colors.textPrimary : colors.textMuted }]}>
+                    {value ? value.toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit' }) : 'Seleccionar'}
+                  </Text>
+                </Pressable>
+                {showTime && (
+                  <DateTimePicker
+                    value={value ?? new Date()}
+                    mode="time"
+                    onChange={(_, d) => { setShowTime(Platform.OS === 'ios'); if (d) onChange(d); }}
+                  />
+                )}
+              </>
+            )} />
+          </View>
+        </View>
 
-        <Text style={styles.label}>Lugar</Text>
         <Controller control={control} name="location" render={({ field: { value, onChange } }) => (
-          <TextInput value={value} onChangeText={onChange} style={styles.input} placeholderTextColor={colors.textSecondary} />
+          <View>
+            <Text style={styles.label}>Lugar</Text>
+            <View style={styles.iconInputWrap}>
+              <MapPin size={18} color={colors.textMuted} strokeWidth={2.2} style={styles.iconInputIcon} />
+              <Input value={value} onChangeText={onChange} placeholder="Dónde se arma" style={{ paddingLeft: 42 }} />
+            </View>
+          </View>
         )} />
 
-        <Text style={styles.label}>Presupuesto total (S/)</Text>
         <Controller control={control} name="total_budget" rules={{ required: 'Presupuesto requerido' }}
           render={({ field: { value, onChange } }) => (
-            <TextInput value={value} onChangeText={onChange} keyboardType="decimal-pad" style={styles.input} placeholderTextColor={colors.textSecondary} />
+            <View>
+              <Text style={styles.label}>Presupuesto total (S/)</Text>
+              <View style={styles.iconInputWrap}>
+                <Wallet size={18} color={colors.textMuted} strokeWidth={2.2} style={styles.iconInputIcon} />
+                <Input value={value} onChangeText={onChange} keyboardType="decimal-pad" placeholder="0.00" style={{ paddingLeft: 42 }} error={errors.total_budget?.message} />
+              </View>
+            </View>
           )}
         />
-        {errors.total_budget && <Text style={styles.err}>{errors.total_budget.message}</Text>}
 
         <LiveAmount control={control} />
 
         <Text style={styles.label}>Participantes</Text>
-        {fields.map((f, i) => (
-          <View key={f.id} style={styles.partRow}>
-            <Controller control={control} name={`participants.${i}.name`}
-              rules={{ required: 'Nombre' }}
-              render={({ field: { value, onChange } }) => (
-                <TextInput placeholder={`Participante ${i + 1}`} value={value} onChangeText={onChange} style={[styles.input, { flex: 1 }]} placeholderTextColor={colors.textSecondary} />
-              )}
-            />
-            {fields.length > 1 && (
-              <Pressable onPress={() => remove(i)} style={styles.removeBtn}><Text style={styles.removeText}>×</Text></Pressable>
-            )}
-          </View>
-        ))}
-        <Pressable onPress={() => append({ name: '' })} style={styles.addBtn}>
+        <View style={{ gap: spacing.sm }}>
+          {fields.map((f, i) => (
+            <View key={f.id} style={styles.partRow}>
+              <View style={styles.partIndex}>
+                <Text style={styles.partIndexText}>{i + 1}</Text>
+              </View>
+              <Controller control={control} name={`participants.${i}.name`}
+                rules={{ required: 'Nombre' }}
+                render={({ field: { value, onChange } }) => (
+                  <View style={{ flex: 1 }}>
+                    <Input placeholder={`Participante ${i + 1}`} value={value} onChangeText={onChange} />
+                  </View>
+                )}
+              />
+              {fields.length > 1 ? (
+                <Pressable
+                  onPress={() => remove(i)}
+                  style={({ pressed }) => [styles.removeBtn, pressed && { transform: [{ scale: 0.92 }] }]}
+                  hitSlop={6}
+                >
+                  <X size={18} color={colors.error} strokeWidth={2.6} />
+                </Pressable>
+              ) : null}
+            </View>
+          ))}
+        </View>
+
+        <Pressable
+          onPress={() => append({ name: '' })}
+          style={({ pressed }) => [styles.addBtn, pressed && { opacity: 0.85 }]}
+        >
+          <Plus size={18} color={colors.primary} strokeWidth={2.6} />
           <Text style={styles.addText}>{SLANG.ctaAddParticipant}</Text>
         </Pressable>
 
-        {submitErr && <Text style={styles.err}>{submitErr}</Text>}
-        {!watchedGroupId && <Text style={styles.err}>Crea un grupo primero.</Text>}
+        {submitErr ? <Text style={styles.err}>{submitErr}</Text> : null}
+        {!watchedGroupId ? <Text style={styles.err}>Crea un grupo primero.</Text> : null}
 
-        <PrimaryButton label={SLANG.ctaConfirmEvent} onPress={onSubmit} loading={createEvent.isPending} disabled={!watchedGroupId} />
+        <View style={{ marginTop: spacing.lg }}>
+          <PrimaryButton label={SLANG.ctaConfirmEvent} onPress={onSubmit} loading={createEvent.isPending} disabled={!watchedGroupId} />
+        </View>
       </ScrollView>
     </SafeAreaView>
   );
@@ -211,17 +258,29 @@ export default function NewEvent() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
-  title: { ...typography.h1, color: colors.textPrimary },
-  label: { ...typography.caption, color: colors.textSecondary, marginTop: spacing.sm },
-  input: { backgroundColor: colors.surface, borderRadius: radius.md, padding: spacing.md, borderWidth: 1, borderColor: colors.border, color: colors.textPrimary, ...typography.body },
-  amountCard: { backgroundColor: colors.accent, padding: spacing.lg, borderRadius: radius.lg, alignItems: 'center', gap: spacing.xs },
-  amountLabel: { ...typography.caption, color: colors.textPrimary },
-  amount: { ...typography.display, color: colors.textPrimary },
-  amountMeta: { ...typography.caption, color: colors.textSecondary },
-  err: { color: colors.error, ...typography.caption },
-  partRow: { flexDirection: 'row', gap: spacing.sm, alignItems: 'center' },
-  removeBtn: { width: 36, height: 36, borderRadius: radius.full, backgroundColor: colors.error, alignItems: 'center', justifyContent: 'center' },
-  removeText: { color: colors.surface, fontSize: 22, lineHeight: 22 },
-  addBtn: { padding: spacing.md, borderRadius: radius.md, borderWidth: 1, borderStyle: 'dashed', borderColor: colors.primary, alignItems: 'center' },
-  addText: { color: colors.primary, ...typography.button },
+  scroll: { padding: spacing.lg, gap: spacing.md, paddingBottom: spacing.xxxl },
+  label: { ...typography.captionBold, color: colors.textPrimary, textTransform: 'uppercase', marginBottom: 6 },
+  fieldRow: { flexDirection: 'row', gap: spacing.sm },
+  pickerInput: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, backgroundColor: colors.surface, borderRadius: radius.md, paddingHorizontal: spacing.md, paddingVertical: 14, borderWidth: 1.5, borderColor: colors.border, minHeight: 50 },
+  pickerText: { ...typography.body },
+
+  iconInputWrap: { position: 'relative' },
+  iconInputIcon: { position: 'absolute', left: spacing.md, top: 16, zIndex: 1 },
+
+  amountCard: { backgroundColor: colors.primary, borderRadius: radius.lg, padding: spacing.lg, overflow: 'hidden', ...shadows.elevated, marginVertical: spacing.sm },
+  amountBlob: { position: 'absolute', width: 180, height: 180, borderRadius: 90, backgroundColor: colors.accent, opacity: 0.7, top: -80, right: -60 },
+  amountContent: { gap: 4, alignItems: 'center' },
+  amountLabel: { ...typography.captionBold, color: 'rgba(255,255,255,0.9)', textTransform: 'uppercase' },
+  amount: { ...typography.amount, color: colors.surface },
+  amountMeta: { ...typography.caption, color: 'rgba(255,255,255,0.85)' },
+
+  partRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  partIndex: { width: 32, height: 32, borderRadius: radius.full, backgroundColor: colors.primarySoft, alignItems: 'center', justifyContent: 'center' },
+  partIndexText: { ...typography.captionBold, color: colors.primary },
+  removeBtn: { width: 36, height: 36, borderRadius: radius.full, backgroundColor: colors.errorSoft, alignItems: 'center', justifyContent: 'center' },
+
+  addBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: spacing.sm, padding: spacing.md, borderRadius: radius.md, borderWidth: 2, borderStyle: 'dashed', borderColor: colors.primary, backgroundColor: colors.primarySoft },
+  addText: { ...typography.button, color: colors.primary },
+
+  err: { ...typography.caption, color: colors.error, textAlign: 'center' },
 });

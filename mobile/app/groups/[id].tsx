@@ -2,13 +2,17 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { ActivityIndicator, Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Clipboard from 'expo-clipboard';
-import { Copy } from 'lucide-react-native';
+import { Calendar, Copy, MapPin, Plus, Share2, Wallet } from 'lucide-react-native';
+import { EmptyState } from '../../components/EmptyState';
 import { PrimaryButton } from '../../components/PrimaryButton';
+import { ScreenHeader } from '../../components/ScreenHeader';
+import { StatusBadge } from '../../components/StatusBadge';
 import { useGroup } from '../../lib/queries/groups';
 import { useEventsByGroup } from '../../lib/queries/events';
 import { SLANG } from '../../lib/slang';
 import { colors } from '../../theme/colors';
 import { radius } from '../../theme/radius';
+import { shadows } from '../../theme/shadows';
 import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
 
@@ -29,38 +33,84 @@ export default function GroupDetail() {
   };
 
   if (group.isLoading) return <SafeAreaView style={styles.center}><ActivityIndicator color={colors.primary} /></SafeAreaView>;
-  if (!group.data) return <SafeAreaView style={styles.center}><Text>{SLANG.errorGeneric}</Text></SafeAreaView>;
+  if (!group.data) return <SafeAreaView style={styles.center}><Text style={styles.err}>{SLANG.errorGeneric}</Text></SafeAreaView>;
 
   return (
-    <SafeAreaView style={styles.container}>
-      <ScrollView contentContainerStyle={{ padding: spacing.lg, gap: spacing.lg }}>
-        <Text style={styles.title}>{group.data.name}</Text>
+    <SafeAreaView style={styles.container} edges={['top']}>
+      <ScreenHeader />
+      <ScrollView contentContainerStyle={styles.scroll}>
+        <View style={styles.heroBlock}>
+          <Text style={styles.title}>{group.data.name}</Text>
+          <Text style={styles.subtitle}>Tu mancha en CaePe</Text>
+        </View>
 
-        <View style={styles.codeRow}>
-          <View>
-            <Text style={styles.label}>código</Text>
+        <View style={styles.codeCard}>
+          <View style={styles.codeLeft}>
+            <Text style={styles.codeLabel}>Código</Text>
             <Text style={styles.code}>{group.data.invite_code}</Text>
           </View>
-          <Pressable onPress={copyCode} style={styles.copyBtn}>
-            <Copy size={18} color={colors.primary} />
+          <Pressable
+            onPress={copyCode}
+            style={({ pressed }) => [styles.copyBtn, pressed && { transform: [{ scale: 0.95 }] }]}
+            hitSlop={8}
+          >
+            <Copy size={18} color={colors.primary} strokeWidth={2.5} />
           </Pressable>
         </View>
 
-        <PrimaryButton label={SLANG.ctaShare} onPress={shareWhatsapp} />
+        <PrimaryButton
+          label={SLANG.ctaShare}
+          onPress={shareWhatsapp}
+          icon={<Share2 size={18} color={colors.onPrimary} strokeWidth={2.5} />}
+        />
 
-        <Text style={styles.section}>{SLANG.sectionEvents}</Text>
-        {events.isLoading ? <ActivityIndicator color={colors.primary} /> :
-          events.data && events.data.length > 0 ?
-            events.data.map((e) => (
-              <Pressable key={e.id} style={styles.eventRow} onPress={() => router.push({ pathname: '/events/[id]', params: { id: e.id } })}>
-                <Text style={styles.eventName}>{e.name}</Text>
-                <Text style={styles.eventMeta}>{e.date ?? 'sin fecha'} — {e.status}</Text>
+        <View style={styles.sectionRow}>
+          <Text style={styles.section}>{SLANG.sectionEvents}</Text>
+        </View>
+
+        {events.isLoading ? (
+          <ActivityIndicator color={colors.primary} style={{ paddingVertical: spacing.lg }} />
+        ) : events.data && events.data.length > 0 ? (
+          <View style={{ gap: spacing.sm }}>
+            {events.data.map((e) => (
+              <Pressable
+                key={e.id}
+                style={({ pressed }) => [styles.eventRow, pressed && { transform: [{ scale: 0.98 }] }]}
+                onPress={() => router.push({ pathname: '/events/[id]', params: { id: e.id } })}
+              >
+                <View style={styles.eventIcon}>
+                  <Calendar size={20} color={colors.primary} strokeWidth={2.4} />
+                </View>
+                <View style={{ flex: 1, gap: 4 }}>
+                  <Text style={styles.eventName}>{e.name}</Text>
+                  <View style={styles.eventMetaRow}>
+                    <MapPin size={12} color={colors.textMuted} />
+                    <Text style={styles.eventMeta}>{e.date ?? 'sin fecha'}</Text>
+                    <Wallet size={12} color={colors.textMuted} />
+                    <Text style={styles.eventMeta}>S/ {e.amount_per_person}</Text>
+                  </View>
+                </View>
+                <StatusBadge status={e.status} />
               </Pressable>
-            )) :
-            <Text style={styles.empty}>{SLANG.emptyEvents}</Text>
-        }
+            ))}
+          </View>
+        ) : (
+          <EmptyState
+            icon={<Calendar size={32} color={colors.primary} strokeWidth={2.2} />}
+            title={SLANG.emptyEvents}
+            body="Crea uno para empezar a juntar la cuota"
+          />
+        )}
 
-        <PrimaryButton variant="secondary" label={SLANG.ctaCreateEvent} onPress={() => router.push({ pathname: '/events/new', params: { groupId: id } })} />
+        <View style={{ marginTop: spacing.lg }}>
+          <PrimaryButton
+            variant="accent"
+            label={SLANG.ctaCreateEvent}
+            onPress={() => router.push({ pathname: '/events/new', params: { groupId: id } })}
+            icon={<Plus size={18} color={colors.onAccent} strokeWidth={2.6} />}
+          />
+        </View>
+        <View style={{ height: spacing.xl }} />
       </ScrollView>
     </SafeAreaView>
   );
@@ -68,15 +118,25 @@ export default function GroupDetail() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.background },
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.background, padding: spacing.lg },
+  scroll: { padding: spacing.lg, gap: spacing.md, paddingBottom: spacing.xxxl },
+  heroBlock: { gap: 4 },
   title: { ...typography.h1, color: colors.textPrimary },
-  codeRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: colors.surface, padding: spacing.lg, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.border },
-  label: { ...typography.caption, color: colors.textSecondary },
-  code: { ...typography.h2, color: colors.primary, letterSpacing: 2 },
-  copyBtn: { padding: spacing.sm },
-  section: { ...typography.h2, color: colors.textPrimary, marginTop: spacing.md },
-  empty: { ...typography.body, color: colors.textSecondary, fontStyle: 'italic' },
-  eventRow: { backgroundColor: colors.surface, padding: spacing.md, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, gap: spacing.xs },
-  eventName: { ...typography.body, fontWeight: '600', color: colors.textPrimary },
+  subtitle: { ...typography.body, color: colors.textSecondary },
+
+  codeCard: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: colors.primary, padding: spacing.lg, borderRadius: radius.lg, ...shadows.elevated },
+  codeLeft: { gap: 4 },
+  codeLabel: { ...typography.captionBold, color: 'rgba(255,255,255,0.85)', textTransform: 'uppercase' },
+  code: { fontSize: 28, fontWeight: '800', color: colors.surface, letterSpacing: 4 },
+  copyBtn: { width: 44, height: 44, borderRadius: radius.full, backgroundColor: colors.surface, alignItems: 'center', justifyContent: 'center' },
+
+  sectionRow: { flexDirection: 'row', alignItems: 'center', marginTop: spacing.md },
+  section: { ...typography.h2, color: colors.textPrimary },
+
+  eventRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, backgroundColor: colors.surface, padding: spacing.md, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, ...shadows.card },
+  eventIcon: { width: 44, height: 44, borderRadius: radius.full, backgroundColor: colors.primarySoft, alignItems: 'center', justifyContent: 'center' },
+  eventName: { ...typography.bodyBold, color: colors.textPrimary },
+  eventMetaRow: { flexDirection: 'row', alignItems: 'center', gap: 4, flexWrap: 'wrap' },
   eventMeta: { ...typography.caption, color: colors.textSecondary },
+  err: { ...typography.body, color: colors.error },
 });

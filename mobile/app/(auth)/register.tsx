@@ -1,9 +1,11 @@
 import { router } from 'expo-router';
 import { Controller, useForm } from 'react-hook-form';
 import { useState } from 'react';
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Input } from '../../components/Input';
 import { PrimaryButton } from '../../components/PrimaryButton';
+import { ScreenHeader } from '../../components/ScreenHeader';
 import { provisionAccount } from '../../lib/queries/auth';
 import { supabase } from '../../lib/supabase';
 import { useSession } from '../../lib/store';
@@ -23,11 +25,9 @@ type FormValues = {
 
 function getRegisterErrorMessage(error: unknown) {
   const message = error instanceof Error ? error.message : 'No se pudo crear la cuenta';
-
   if (message.toLowerCase().includes('email signups are disabled')) {
     return 'El registro con email está desactivado en Supabase. Activa el proveedor Email y deja apagada la confirmación de email.';
   }
-
   return message;
 }
 
@@ -59,73 +59,83 @@ export default function Register() {
   });
 
   return (
-    <SafeAreaView style={styles.container}>
-      <Text style={styles.title}>{SLANG.ctaCreateAccount}</Text>
+    <SafeAreaView style={styles.container} edges={['top']}>
+      <ScreenHeader title={SLANG.ctaCreateAccount} subtitle="Listo en 30 segundos" />
+      <ScrollView contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled">
+        <Controller control={control} name="name" rules={{ required: 'Nombre requerido' }}
+          render={({ field: { value, onChange } }) => (
+            <Input label="Nombre" placeholder="Tu nombre" value={value} onChangeText={onChange} error={errors.name?.message} />
+          )}
+        />
 
-      <Controller control={control} name="name" rules={{ required: 'Nombre requerido' }}
-        render={({ field: { value, onChange } }) => (
-          <TextInput placeholder="nombre" value={value} onChangeText={onChange} style={styles.input} placeholderTextColor={colors.textSecondary} />
-        )}
-      />
-      {errors.name && <Text style={styles.err}>{errors.name.message}</Text>}
+        <Controller control={control} name="email" rules={{ required: 'Email requerido' }}
+          render={({ field: { value, onChange } }) => (
+            <Input label="Email" placeholder="tu@email.com" keyboardType="email-address" autoCapitalize="none" autoComplete="email" textContentType="emailAddress" value={value} onChangeText={onChange} error={errors.email?.message} />
+          )}
+        />
 
-      <Controller control={control} name="email" rules={{ required: 'Email requerido' }}
-        render={({ field: { value, onChange } }) => (
-          <TextInput placeholder="email" keyboardType="email-address" autoCapitalize="none"
-            value={value} onChangeText={onChange} style={styles.input} placeholderTextColor={colors.textSecondary} />
-        )}
-      />
-      {errors.email && <Text style={styles.err}>{errors.email.message}</Text>}
+        <Controller control={control} name="password" rules={{ required: 'Contraseña requerida', minLength: { value: 6, message: 'Mín 6 caracteres' } }}
+          render={({ field: { value, onChange } }) => (
+            <Input label="Contraseña" placeholder="Mínimo 6 caracteres" secureTextEntry autoComplete="new-password" textContentType="newPassword" value={value} onChangeText={onChange} error={errors.password?.message} />
+          )}
+        />
 
-      <Controller control={control} name="password" rules={{ required: 'Contraseña requerida', minLength: { value: 6, message: 'Mín 6' } }}
-        render={({ field: { value, onChange } }) => (
-          <TextInput placeholder="contraseña" secureTextEntry value={value} onChangeText={onChange} style={styles.input} placeholderTextColor={colors.textSecondary} />
-        )}
-      />
-      {errors.password && <Text style={styles.err}>{errors.password.message}</Text>}
+        <View style={styles.field}>
+          <Text style={styles.label}>Método de pago</Text>
+          <Controller control={control} name="payment_method"
+            render={({ field: { value, onChange } }) => (
+              <View style={styles.chipsRow}>
+                {(['yape', 'plin'] as const).map((m) => (
+                  <Pressable key={m} onPress={() => onChange(m)}
+                    style={({ pressed }) => [
+                      styles.chip,
+                      value === m && styles.chipActive,
+                      pressed && { opacity: 0.85 },
+                    ]}
+                  >
+                    <Text style={[styles.chipText, value === m && styles.chipTextActive]}>{m.toUpperCase()}</Text>
+                  </Pressable>
+                ))}
+              </View>
+            )}
+          />
+        </View>
 
-      <Text style={styles.label}>Método de pago</Text>
-      <Controller control={control} name="payment_method"
-        render={({ field: { value, onChange } }) => (
-          <View style={styles.chipsRow}>
-            {(['yape', 'plin'] as const).map((m) => (
-              <Pressable key={m} onPress={() => onChange(m)}
-                style={[styles.chip, value === m && styles.chipActive]}>
-                <Text style={[styles.chipText, value === m && styles.chipTextActive]}>{m.toUpperCase()}</Text>
-              </Pressable>
-            ))}
-          </View>
-        )}
-      />
+        <Controller control={control} name="payment_number"
+          rules={{ required: 'Número requerido', pattern: { value: /^\d{9}$/, message: '9 dígitos' } }}
+          render={({ field: { value, onChange } }) => (
+            <Input
+              label="Número (9 dígitos)"
+              placeholder="987654321"
+              keyboardType="number-pad"
+              maxLength={9}
+              value={value}
+              onChangeText={onChange}
+              error={errors.payment_number?.message}
+              helper="Lo verán solo los participantes de tus eventos"
+            />
+          )}
+        />
 
-      <Controller control={control} name="payment_number"
-        rules={{ required: 'Número requerido', pattern: { value: /^\d{9}$/, message: '9 dígitos' } }}
-        render={({ field: { value, onChange } }) => (
-          <TextInput placeholder="número (9 dígitos)" keyboardType="number-pad" maxLength={9}
-            value={value} onChangeText={onChange} style={styles.input} placeholderTextColor={colors.textSecondary} />
-        )}
-      />
-      {errors.payment_number && <Text style={styles.err}>{errors.payment_number.message}</Text>}
+        {error ? <Text style={styles.err}>{error}</Text> : null}
 
-      {error && <Text style={styles.err}>{error}</Text>}
-
-      <PrimaryButton label={SLANG.ctaCreateAccount} onPress={onSubmit} loading={loading} />
+        <View style={{ marginTop: spacing.md }}>
+          <PrimaryButton label={SLANG.ctaCreateAccount} onPress={onSubmit} loading={loading} />
+        </View>
+      </ScrollView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.background, padding: spacing.xl, gap: spacing.md },
-  title: { ...typography.h1, color: colors.textPrimary, marginBottom: spacing.md },
-  input: {
-    backgroundColor: colors.surface, borderRadius: radius.md, padding: spacing.md,
-    borderWidth: 1, borderColor: colors.border, color: colors.textPrimary, ...typography.body,
-  },
-  label: { ...typography.caption, color: colors.textSecondary, marginTop: spacing.sm },
+  container: { flex: 1, backgroundColor: colors.background },
+  body: { padding: spacing.lg, gap: spacing.md, paddingBottom: spacing.xxxl },
+  field: { gap: 6 },
+  label: { ...typography.captionBold, color: colors.textPrimary, textTransform: 'uppercase' },
   chipsRow: { flexDirection: 'row', gap: spacing.sm },
-  chip: { paddingHorizontal: spacing.lg, paddingVertical: spacing.sm, borderRadius: radius.full, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface },
+  chip: { flex: 1, paddingHorizontal: spacing.lg, paddingVertical: 14, borderRadius: radius.md, borderWidth: 1.5, borderColor: colors.border, backgroundColor: colors.surface, alignItems: 'center' },
   chipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
-  chipText: { color: colors.textPrimary, fontWeight: '600' },
-  chipTextActive: { color: colors.surface },
-  err: { color: colors.error, ...typography.caption },
+  chipText: { ...typography.bodyBold, color: colors.textPrimary, letterSpacing: 0.5 },
+  chipTextActive: { color: colors.onPrimary },
+  err: { ...typography.caption, color: colors.error, textAlign: 'center' },
 });
