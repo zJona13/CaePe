@@ -1,9 +1,9 @@
 import { router } from 'expo-router';
 import { useState } from 'react';
-import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Calendar, Plus } from 'lucide-react-native';
-import { useGroups, type Group } from '../../lib/queries/groups';
+import { useGroups, useJoinGroup, type Group } from '../../lib/queries/groups';
 import { useEvents, type EventListItem } from '../../lib/queries/events';
 import { useSession } from '../../lib/store';
 import { SLANG } from '../../lib/slang';
@@ -17,10 +17,23 @@ export default function Home() {
   const user = useSession((s) => s.user);
   const groups = useGroups();
   const events = useEvents();
+  const joinGroup = useJoinGroup();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [joinOpen, setJoinOpen] = useState(false);
+  const [inviteCode, setInviteCode] = useState('');
+  const [joinError, setJoinError] = useState<string | null>(null);
 
   const close = () => setMenuOpen(false);
   const goCreateGroup = () => { close(); router.push('/groups/new'); };
+  const openJoin = () => {
+    close();
+    setJoinOpen(true);
+    setJoinError(null);
+  };
+  const closeJoin = () => {
+    setJoinOpen(false);
+    setJoinError(null);
+  };
   const goRoulette = () => { close(); router.push('/planazo/ruleta'); };
   const goCreateEvent = () => {
     close();
@@ -28,6 +41,24 @@ export default function Home() {
       router.push({ pathname: '/events/new', params: { groupId: groups.data[0].id } });
     } else {
       router.push('/groups/new');
+    }
+  };
+  const submitInviteCode = async () => {
+    const code = inviteCode.trim().toUpperCase();
+    if (!code) {
+      setJoinError('Ingresa el código de invitación.');
+      return;
+    }
+
+    setJoinError(null);
+    try {
+      const joined = await joinGroup.mutateAsync(code);
+      setInviteCode('');
+      closeJoin();
+      router.push({ pathname: '/groups/[id]', params: { id: joined.group_id } });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : SLANG.errorGeneric;
+      setJoinError(message);
     }
   };
 
@@ -64,10 +95,36 @@ export default function Home() {
         <Pressable style={styles.overlay} onPress={close}>
           <View style={styles.menu}>
             <PrimaryButton label="Crear grupo" onPress={goCreateGroup} />
+            <PrimaryButton variant="secondary" label="Unirme con código" onPress={openJoin} />
             <PrimaryButton variant="secondary" label={SLANG.ctaSpinRoulette} onPress={goRoulette} />
             <PrimaryButton variant="ghost" label="Crear evento directo" onPress={goCreateEvent} />
             <PrimaryButton variant="ghost" label={SLANG.ctaSoftCancel} onPress={close} />
           </View>
+        </Pressable>
+      </Modal>
+
+      <Modal transparent visible={joinOpen} animationType="fade" onRequestClose={closeJoin}>
+        <Pressable style={styles.overlay} onPress={closeJoin}>
+          <Pressable style={styles.joinCard} onPress={() => undefined}>
+            <Text style={styles.joinTitle}>Unirme a un grupo</Text>
+            <Text style={styles.inputLabel}>Código de invitación</Text>
+            <TextInput
+              value={inviteCode}
+              onChangeText={(value) => {
+                setInviteCode(value.toUpperCase());
+                if (joinError) setJoinError(null);
+              }}
+              autoCapitalize="characters"
+              autoCorrect={false}
+              maxLength={16}
+              placeholder="EJ. A1B2C3D4"
+              placeholderTextColor={colors.textSecondary}
+              style={styles.input}
+            />
+            {joinError && <Text style={styles.err}>{joinError}</Text>}
+            <PrimaryButton label="Unirme" onPress={submitInviteCode} loading={joinGroup.isPending} />
+            <PrimaryButton variant="ghost" label={SLANG.ctaSoftCancel} onPress={closeJoin} />
+          </Pressable>
         </Pressable>
       </Modal>
     </SafeAreaView>
@@ -113,4 +170,9 @@ const styles = StyleSheet.create({
   fabText: { color: colors.surface, ...typography.button },
   overlay: { flex: 1, backgroundColor: colors.overlay, justifyContent: 'flex-end', padding: spacing.lg },
   menu: { backgroundColor: colors.surface, padding: spacing.lg, borderRadius: radius.lg, gap: spacing.md, marginBottom: spacing.xl },
+  joinCard: { backgroundColor: colors.surface, padding: spacing.lg, borderRadius: radius.lg, gap: spacing.md, marginBottom: spacing.xl },
+  joinTitle: { ...typography.h2, color: colors.textPrimary },
+  inputLabel: { ...typography.caption, color: colors.textSecondary },
+  input: { backgroundColor: colors.background, borderRadius: radius.md, padding: spacing.md, borderWidth: 1, borderColor: colors.border, color: colors.textPrimary, ...typography.body },
+  err: { color: colors.error, ...typography.caption },
 });
