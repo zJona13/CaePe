@@ -201,7 +201,7 @@ export default function NewEvent() {
         </Pressable>
 
         {submitErr && <Text style={styles.err}>{submitErr}</Text>}
-        {!watchedGroupId && <Text style={styles.err}>Crea una collera primero.</Text>}
+        {!watchedGroupId && <Text style={styles.err}>Crea un grupo primero.</Text>}
 
         <PrimaryButton label={SLANG.ctaConfirmEvent} onPress={onSubmit} loading={createEvent.isPending} disabled={!watchedGroupId} />
       </ScrollView>

@@ -25,7 +25,7 @@ export default function NewGroup() {
 
   const shareWhatsapp = async (group: Group) => {
     const link = `caepe://groups/join/${group.invite_code}`;
-    const msg = `¡Habla! Únete a mi collera "${group.name}" en CaePe: ${link}`;
+    const msg = `¡Habla! Únete a mi grupo "${group.name}" en CaePe: ${link}`;
     const url = `whatsapp://send?text=${encodeURIComponent(msg)}`;
     try { await Linking.openURL(url); } catch { /* ignore */ }
   };
@@ -33,23 +33,23 @@ export default function NewGroup() {
   if (created) {
     return (
       <SafeAreaView style={styles.container}>
-        <Text style={styles.title}>¡Collera armada!</Text>
+        <Text style={styles.title}>¡Grupo armado!</Text>
         <View style={styles.codeCard}>
           <Text style={styles.label}>Código de invitación</Text>
           <Text style={styles.code}>{created.invite_code}</Text>
         </View>
         <PrimaryButton label={SLANG.ctaShare} onPress={() => shareWhatsapp(created)} />
-        <PrimaryButton variant="ghost" label="Ir a la collera" onPress={() => router.replace({ pathname: '/groups/[id]', params: { id: created.id } })} />
+        <PrimaryButton variant="ghost" label="Ir al grupo" onPress={() => router.replace({ pathname: '/groups/[id]', params: { id: created.id } })} />
       </SafeAreaView>
     );
   }
 
   return (
     <SafeAreaView style={styles.container}>
-      <Text style={styles.title}>Nueva collera</Text>
+      <Text style={styles.title}>Nuevo Grupo</Text>
       <Controller control={control} name="name" rules={{ required: 'Nombre requerido' }}
         render={({ field: { value, onChange } }) => (
-          <TextInput placeholder="nombre de la collera" value={value} onChangeText={onChange} style={styles.input} placeholderTextColor={colors.textSecondary} />
+          <TextInput placeholder="nombre del grupo" value={value} onChangeText={onChange} style={styles.input} placeholderTextColor={colors.textSecondary} />
         )}
       />
       {errors.name && <Text style={styles.err}>{errors.name.message}</Text>}

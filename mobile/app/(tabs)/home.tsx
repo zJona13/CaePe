@@ -63,7 +63,7 @@ export default function Home() {
       <Modal transparent visible={menuOpen} animationType="fade" onRequestClose={close}>
         <Pressable style={styles.overlay} onPress={close}>
           <View style={styles.menu}>
-            <PrimaryButton label="Crear collera" onPress={goCreateGroup} />
+            <PrimaryButton label="Crear grupo" onPress={goCreateGroup} />
             <PrimaryButton variant="secondary" label={SLANG.ctaSpinRoulette} onPress={goRoulette} />
             <PrimaryButton variant="ghost" label="Crear evento directo" onPress={goCreateEvent} />
             <PrimaryButton variant="ghost" label={SLANG.ctaSoftCancel} onPress={close} />

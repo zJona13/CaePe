@@ -143,11 +143,11 @@ Recorre este flujo completo en Android emulator + iOS sim:
 - [ ] App primer arranque → onboarding visible
 - [ ] Tap "Crear cuenta" → register form
 - [ ] Llenar form completo + tap "Crear cuenta" → llega a home
-- [ ] Home muestra `¡Habla, [nombre]!` y secciones vacías de collera/eventos
+- [ ] Home muestra `¡Habla, [nombre]!` y secciones vacías de grupo/eventos
 - [ ] Tap FAB "Arma el plan" → menú con 3 opciones
-- [ ] "Crear collera" → form, ingresar nombre → muestra invite_code
+- [ ] "Crear grupo" → form, ingresar nombre → muestra invite_code
 - [ ] "Pasa la voz" abre WhatsApp con mensaje preformateado
-- [ ] Volver a home → collera aparece en sección
+- [ ] Volver a home → grupo aparece en sección
 - [ ] FAB → "Tira la ruleta" → seleccionar categoría=comida + price_max=30 + #personas=4
 - [ ] Tap "¡Tira la ruleta!" → ícono dado rota 1.5s → resultado aparece
 - [ ] Tap "Arma evento con este" → events/new prellenado con plan
