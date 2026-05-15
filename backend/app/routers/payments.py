@@ -2,10 +2,11 @@ from __future__ import annotations
 
 import uuid
 from decimal import Decimal
+from pathlib import Path
 
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile, status
 
-from app.deps import CurrentUser, DBSession
+from app.deps import CurrentUser, DBSession, OptionalUser
 from app.models import (
     Event,
     EventParticipant,
@@ -18,6 +19,24 @@ from app.services.events_service import check_and_mark_funded, utcnow
 
 router = APIRouter(prefix="/payments", tags=["payments"])
 
+UPLOADS_DIR = Path(__file__).resolve().parent.parent.parent / "uploads"
+ALLOWED_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp", ".heic"}
+MAX_PROOF_BYTES = 8 * 1024 * 1024  # 8 MB
+
+
+def _save_proof(file: UploadFile) -> str:
+    raw = file.file.read()
+    if len(raw) > MAX_PROOF_BYTES:
+        raise HTTPException(status.HTTP_413_REQUEST_ENTITY_TOO_LARGE, "Proof too large (max 8MB)")
+    ext = Path(file.filename or "").suffix.lower()
+    if ext not in ALLOWED_EXTENSIONS:
+        ext = ".jpg"
+    UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
+    filename = f"{uuid.uuid4().hex}{ext}"
+    dest = UPLOADS_DIR / filename
+    dest.write_bytes(raw)
+    return f"/uploads/{filename}"
+
 
 @router.post(
     "/upload-proof",
@@ -25,14 +44,18 @@ router = APIRouter(prefix="/payments", tags=["payments"])
     status_code=status.HTTP_201_CREATED,
 )
 def upload_proof(
-    current: CurrentUser,
+    current: OptionalUser,
     db: DBSession,
     event_id: uuid.UUID = Form(...),
     participant_id: uuid.UUID = Form(...),
     amount: Decimal = Form(...),
     file: UploadFile | None = File(default=None),
 ) -> Payment:
-    """MVP placeholder: stores a reference URL only, no S3 upload."""
+    """Saves the receipt image to disk and stores its public URL on the participant.
+
+    Public endpoint: guests viewing an event via invite link can upload their own
+    Yape/Plin screenshot without an account.
+    """
     participant = db.get(EventParticipant, participant_id)
     if participant is None or participant.event_id != event_id:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Participant not found")
@@ -42,7 +65,7 @@ def upload_proof(
 
     proof_url: str | None = None
     if file is not None and file.filename:
-        proof_url = f"placeholder://{file.filename}"
+        proof_url = _save_proof(file)
 
     payment = Payment(
         event_id=event_id,

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import io
+import re
 
 
 def _setup(client, make_user):
@@ -39,7 +40,7 @@ def test_upload_proof_creates_pending_payment(client, make_user):
     assert r.status_code == 201, r.text
     body = r.json()
     assert body["status"] == "pending"
-    assert body["proof_image_url"] == "placeholder://yape.png"
+    assert re.fullmatch(r"/uploads/[0-9a-f]+\.png", body["proof_image_url"]), body["proof_image_url"]
     assert body["amount"] == "20.00"
 
 

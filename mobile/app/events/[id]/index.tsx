@@ -1,14 +1,17 @@
 import { router, useLocalSearchParams } from 'expo-router';
-import { useEffect } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useEffect, useState } from 'react';
+import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Calendar, CheckCircle2, Clock, Copy, MapPin, Pencil, Wallet } from 'lucide-react-native';
 import * as Clipboard from 'expo-clipboard';
+import * as ImagePicker from 'expo-image-picker';
 import { ParticipantRow } from '../../../components/ParticipantRow';
 import { PrimaryButton } from '../../../components/PrimaryButton';
+import { ProofViewerModal } from '../../../components/ProofViewerModal';
 import { ScreenHeader } from '../../../components/ScreenHeader';
 import { StatusBadge } from '../../../components/StatusBadge';
 import { useEvent } from '../../../lib/queries/events';
+import { resolveProofUrl, useUploadProof } from '../../../lib/queries/payments';
 import { useSession } from '../../../lib/store';
 import { SLANG } from '../../../lib/slang';
 import { colors } from '../../../theme/colors';
@@ -21,6 +24,9 @@ export default function EventDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const event = useEvent(id);
   const user = useSession((s) => s.user);
+  const uploadProof = useUploadProof(id ?? '');
+  const [viewerUri, setViewerUri] = useState<string | null>(null);
+  const [viewerTitle, setViewerTitle] = useState<string>('');
 
   useEffect(() => {
     if (event.data?.status === 'funded') {
@@ -37,6 +43,39 @@ export default function EventDetail() {
   const isGuest = !user;
   const payMethod = e.organizer_payment_method;
   const payNumber = e.organizer_payment_number;
+
+  const pickAndUpload = async (participantId: string, amount: string) => {
+    const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!perm.granted) {
+      Alert.alert('Permiso requerido', 'Necesitamos acceso a tus fotos para subir el comprobante.');
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      quality: 0.85,
+    });
+    if (result.canceled || !result.assets[0]) return;
+    const asset = result.assets[0];
+    try {
+      await uploadProof.mutateAsync({
+        eventId: id!,
+        participantId,
+        amount,
+        fileUri: asset.uri,
+        fileName: asset.fileName ?? 'proof.jpg',
+        mimeType: asset.mimeType ?? 'image/jpeg',
+      });
+    } catch (err) {
+      Alert.alert('No se pudo subir', (err as Error).message);
+    }
+  };
+
+  const openProof = (proofUrl: string | null | undefined, name: string) => {
+    const uri = resolveProofUrl(proofUrl);
+    if (!uri) return;
+    setViewerTitle(`Comprobante · ${name}`);
+    setViewerUri(uri);
+  };
 
   const paidCount = e.participants.filter((p) => p.payment_status === 'paid').length;
   const totalCount = e.participants.length;
@@ -109,10 +148,25 @@ export default function EventDetail() {
         ) : null}
 
         <Text style={styles.section}>Participantes</Text>
+        <Text style={styles.sectionHint}>Encuentra tu nombre y sube tu comprobante de Yape/Plin.</Text>
         <View style={{ gap: spacing.sm }}>
-          {e.participants.map((p) => (
-            <ParticipantRow key={p.id} name={p.name} amountDue={p.amount_due} status={p.payment_status} isOrganizer={p.user_id === e.organizer_id} />
-          ))}
+          {e.participants.map((p) => {
+            const hasProof = !!p.proof_image_url;
+            const canUpload = p.payment_status === 'pending';
+            return (
+              <ParticipantRow
+                key={p.id}
+                name={p.name}
+                amountDue={p.amount_due}
+                status={p.payment_status}
+                isOrganizer={p.user_id === e.organizer_id}
+                hasProof={hasProof}
+                onViewProof={hasProof ? () => openProof(p.proof_image_url, p.name) : undefined}
+                onUploadProof={canUpload ? () => pickAndUpload(p.id, p.amount_due) : undefined}
+                uploading={uploadProof.isPending && uploadProof.variables?.participantId === p.id}
+              />
+            );
+          })}
         </View>
 
         <View style={styles.actions}>
@@ -133,6 +187,13 @@ export default function EventDetail() {
         </View>
         <View style={{ height: spacing.xxl }} />
       </ScrollView>
+
+      <ProofViewerModal
+        visible={viewerUri !== null}
+        uri={viewerUri}
+        title={viewerTitle}
+        onClose={() => setViewerUri(null)}
+      />
     </SafeAreaView>
   );
 }
@@ -169,5 +230,6 @@ const styles = StyleSheet.create({
   tooltip: { ...typography.caption, color: colors.textSecondary, fontStyle: 'italic' },
 
   section: { ...typography.h2, color: colors.textPrimary, marginTop: spacing.sm },
+  sectionHint: { ...typography.caption, color: colors.textSecondary, marginTop: -spacing.xs },
   actions: { gap: spacing.sm, marginTop: spacing.md },
 });

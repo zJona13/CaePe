@@ -27,6 +27,7 @@ backend/venv/
 backend/*.egg-info/
 backend/.coverage
 backend/htmlcov/
+backend/uploads/
 
 # --- Mobile (Expo / Node) ---
 mobile/node_modules/

@@ -70,6 +70,8 @@ export function useEvent(id: string | undefined) {
     enabled: !!id,
     queryFn: () => apiRequest<EventDetail>(`/events/${id}`, { auth: false }),
     refetchInterval: 5_000,
+    refetchOnMount: 'always',
+    staleTime: 0,
   });
 }
 

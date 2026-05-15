@@ -1,11 +1,13 @@
 import { useLocalSearchParams } from 'expo-router';
+import { useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { CheckCircle2, Lock } from 'lucide-react-native';
 import { ParticipantRow } from '../../../components/ParticipantRow';
+import { ProofViewerModal } from '../../../components/ProofViewerModal';
 import { ScreenHeader } from '../../../components/ScreenHeader';
 import { useEvent } from '../../../lib/queries/events';
-import { useMarkPayment } from '../../../lib/queries/payments';
+import { resolveProofUrl, useMarkPayment } from '../../../lib/queries/payments';
 import { useSession } from '../../../lib/store';
 import { SLANG } from '../../../lib/slang';
 import { colors } from '../../../theme/colors';
@@ -19,6 +21,15 @@ export default function Payments() {
   const event = useEvent(id);
   const mark = useMarkPayment(id ?? '');
   const user = useSession((s) => s.user);
+  const [viewerUri, setViewerUri] = useState<string | null>(null);
+  const [viewerTitle, setViewerTitle] = useState<string>('');
+
+  const openProof = (proofUrl: string | null | undefined, name: string) => {
+    const uri = resolveProofUrl(proofUrl);
+    if (!uri) return;
+    setViewerTitle(`Comprobante · ${name}`);
+    setViewerUri(uri);
+  };
 
   if (event.isLoading || !event.data) {
     return <SafeAreaView style={styles.center}><ActivityIndicator color={colors.primary} /></SafeAreaView>;
@@ -60,21 +71,33 @@ export default function Payments() {
         </View>
 
         <View style={{ gap: spacing.sm }}>
-          {e.participants.map((p) => (
-            <ParticipantRow
-              key={p.id}
-              name={p.name}
-              amountDue={p.amount_due}
-              status={p.payment_status}
-              isOrganizer={p.user_id === e.organizer_id}
-              showMarkButton
-              onMarkPaid={() => mark.mutate({ participantId: p.id, status: 'paid' })}
-              marking={mark.isPending && mark.variables?.participantId === p.id}
-            />
-          ))}
+          {e.participants.map((p) => {
+            const hasProof = !!p.proof_image_url;
+            return (
+              <ParticipantRow
+                key={p.id}
+                name={p.name}
+                amountDue={p.amount_due}
+                status={p.payment_status}
+                isOrganizer={p.user_id === e.organizer_id}
+                showMarkButton
+                onMarkPaid={() => mark.mutate({ participantId: p.id, status: 'paid' })}
+                marking={mark.isPending && mark.variables?.participantId === p.id}
+                hasProof={hasProof}
+                onViewProof={hasProof ? () => openProof(p.proof_image_url, p.name) : undefined}
+              />
+            );
+          })}
         </View>
         <View style={{ height: spacing.xxl }} />
       </ScrollView>
+
+      <ProofViewerModal
+        visible={viewerUri !== null}
+        uri={viewerUri}
+        title={viewerTitle}
+        onClose={() => setViewerUri(null)}
+      />
     </SafeAreaView>
   );
 }
