@@ -2,7 +2,7 @@ import { router } from 'expo-router';
 import { useState, type ReactNode } from 'react';
 import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Calendar, Compass, MapPin, Plus, Sparkles, Users, Wallet } from 'lucide-react-native';
+import { Bell, Calendar, Clock, Compass, MapPin, Plus, Sparkles, Users } from 'lucide-react-native';
 import { EmptyState } from '../../components/EmptyState';
 import { Input } from '../../components/Input';
 import { PrimaryButton } from '../../components/PrimaryButton';
@@ -16,6 +16,27 @@ import { radius } from '../../theme/radius';
 import { shadows } from '../../theme/shadows';
 import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
+
+const MONTHS_ES = ['ENE', 'FEB', 'MAR', 'ABR', 'MAY', 'JUN', 'JUL', 'AGO', 'SEP', 'OCT', 'NOV', 'DIC'];
+
+function parseDatePill(date: string | null): { month: string; day: string } | null {
+  if (!date) return null;
+  const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(date);
+  if (!match) return null;
+  const monthIdx = Math.max(0, Math.min(11, parseInt(match[2], 10) - 1));
+  return { month: MONTHS_ES[monthIdx], day: match[3] };
+}
+
+function formatTime(time: string | null): string | null {
+  if (!time) return null;
+  const match = /^(\d{2}):(\d{2})/.exec(time);
+  if (!match) return time;
+  const h = parseInt(match[1], 10);
+  const m = match[2];
+  const period = h >= 12 ? 'PM' : 'AM';
+  const h12 = h % 12 === 0 ? 12 : h % 12;
+  return `${h12}:${m} ${period}`;
+}
 
 export default function Home() {
   const user = useSession((s) => s.user);
@@ -54,16 +75,24 @@ export default function Home() {
     }
   };
 
-  const firstName = (user?.name ?? user?.email ?? 'causa').split(' ')[0].split('@')[0];
+  const fullName = user?.name ?? user?.email ?? 'causa';
+  const firstName = fullName.split(' ')[0].split('@')[0];
+  const avatarLetter = firstName.charAt(0).toUpperCase();
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         <View style={styles.header}>
-          <View>
-            <Text style={styles.eyebrow}>Hola</Text>
-            <Text style={styles.greet}>{firstName} 👋</Text>
+          <View style={styles.avatar}>
+            <Text style={styles.avatarText}>{avatarLetter}</Text>
           </View>
+          <View style={styles.headerText}>
+            <Text style={styles.greet}>Hola, {firstName}</Text>
+            <Text style={styles.greetSub}>¿Qué plan tenemos hoy?</Text>
+          </View>
+          <Pressable hitSlop={8} style={styles.bellBtn}>
+            <Bell size={22} color={colors.textPrimary} strokeWidth={2.2} />
+          </Pressable>
         </View>
 
         <Pressable
@@ -86,28 +115,27 @@ export default function Home() {
           </View>
         </Pressable>
 
-        <SectionHeader title={SLANG.sectionGroups} icon={<Users size={18} color={colors.secondary} strokeWidth={2.5} />} />
+        <SectionHeader title="Mis Grupos" actionLabel="Ver todos" onAction={() => { /* TODO: pantalla de todos los grupos */ }} />
         {groups.isLoading ? (
           <ActivityIndicator color={colors.primary} style={{ paddingVertical: spacing.lg }} />
         ) : groups.data && groups.data.length > 0 ? (
           <View style={{ gap: spacing.sm }}>
-            {groups.data.map((g) => <GroupRow key={g.id} group={g} />)}
+            {groups.data.map((g) => <GroupCard key={g.id} group={g} />)}
           </View>
         ) : (
           <EmptyState
-            icon={<Users size={32} color={colors.secondary} strokeWidth={2.2} />}
+            icon={<Users size={32} color={colors.primary} strokeWidth={2.2} />}
             title={SLANG.emptyGroups}
             body="Crea uno o únete con código de invitación"
-            tint="secondary"
           />
         )}
 
-        <SectionHeader title={SLANG.sectionEvents} icon={<Calendar size={18} color={colors.primary} strokeWidth={2.5} />} />
+        <SectionHeader title="Próximos Planes" />
         {events.isLoading ? (
           <ActivityIndicator color={colors.primary} style={{ paddingVertical: spacing.lg }} />
         ) : events.data && events.data.length > 0 ? (
           <View style={{ gap: spacing.sm }}>
-            {events.data.map((e) => <EventRow key={e.id} event={e} />)}
+            {events.data.map((e) => <EventCard key={e.id} event={e} />)}
           </View>
         ) : (
           <EmptyState
@@ -125,7 +153,7 @@ export default function Home() {
         onPress={() => setMenuOpen(true)}
       >
         <Plus color={colors.onPrimary} size={22} strokeWidth={2.8} />
-        <Text style={styles.fabText}>{SLANG.ctaCreatePlan}</Text>
+        <Text style={styles.fabText}>Arma el plan</Text>
       </Pressable>
 
       <Modal transparent visible={menuOpen} animationType="fade" onRequestClose={close}>
@@ -170,51 +198,73 @@ export default function Home() {
   );
 }
 
-function SectionHeader({ title, icon }: { title: string; icon: ReactNode }) {
+function SectionHeader({ title, actionLabel, onAction }: { title: string; actionLabel?: string; onAction?: () => void }) {
   return (
     <View style={styles.sectionHeader}>
-      <View style={styles.sectionIcon}>{icon}</View>
       <Text style={styles.section}>{title}</Text>
+      {actionLabel && onAction ? (
+        <Pressable onPress={onAction} hitSlop={8}>
+          <Text style={styles.sectionAction}>{actionLabel}</Text>
+        </Pressable>
+      ) : null}
     </View>
   );
 }
 
-function GroupRow({ group }: { group: Group }) {
+function GroupCard({ group }: { group: Group }) {
   return (
     <Pressable
       onPress={() => router.push({ pathname: '/groups/[id]', params: { id: group.id } })}
-      style={({ pressed }) => [styles.row, pressed && { transform: [{ scale: 0.98 }] }]}
+      style={({ pressed }) => [styles.card, pressed && { transform: [{ scale: 0.98 }] }]}
     >
-      <View style={[styles.rowIcon, { backgroundColor: colors.secondarySoft }]}>
-        <Users size={20} color={colors.secondary} strokeWidth={2.4} />
-      </View>
-      <View style={{ flex: 1, gap: 2 }}>
-        <Text style={styles.rowTitle}>{group.name}</Text>
-        <Text style={styles.rowMeta}>código · {group.invite_code}</Text>
+      <View style={styles.groupRow}>
+        <View style={styles.groupIcon}>
+          <Users size={22} color={colors.primary} strokeWidth={2.4} />
+        </View>
+        <View style={{ flex: 1, gap: 2 }}>
+          <Text style={styles.cardTitle}>{group.name}</Text>
+          <Text style={styles.cardMeta}>{group.members_count} {group.members_count === 1 ? 'miembro' : 'miembros'}</Text>
+        </View>
       </View>
     </Pressable>
   );
 }
 
-function EventRow({ event }: { event: EventListItem }) {
+function EventCard({ event }: { event: EventListItem }) {
+  const pill = parseDatePill(event.date);
+  const time = formatTime(event.time);
   return (
     <Pressable
       onPress={() => router.push({ pathname: '/events/[id]', params: { id: event.id } })}
-      style={({ pressed }) => [styles.row, pressed && { transform: [{ scale: 0.98 }] }]}
+      style={({ pressed }) => [styles.card, pressed && { transform: [{ scale: 0.98 }] }]}
     >
-      <View style={[styles.rowIcon, { backgroundColor: colors.primarySoft }]}>
-        <Calendar size={20} color={colors.primary} strokeWidth={2.4} />
-      </View>
-      <View style={{ flex: 1, gap: 4 }}>
-        <Text style={styles.rowTitle}>{event.name}</Text>
-        <View style={styles.rowMetaRow}>
-          <MapPin size={12} color={colors.textMuted} strokeWidth={2.2} />
-          <Text style={styles.rowMeta}>{event.date ?? 'sin fecha'}</Text>
-          <Wallet size={12} color={colors.textMuted} strokeWidth={2.2} />
-          <Text style={styles.rowMeta}>S/ {event.amount_per_person}</Text>
+      <View style={styles.eventRow}>
+        <View style={styles.datePill}>
+          <Text style={styles.dateMonth}>{pill?.month ?? '—'}</Text>
+          <Text style={styles.dateDay}>{pill?.day ?? '--'}</Text>
+        </View>
+
+        <View style={{ flex: 1, gap: 4 }}>
+          <Text style={styles.cardTitle} numberOfLines={1}>{event.name}</Text>
+          {event.location ? (
+            <View style={styles.eventMetaRow}>
+              <MapPin size={13} color={colors.textSecondary} strokeWidth={2.2} />
+              <Text style={styles.cardMeta} numberOfLines={1}>{event.location}</Text>
+            </View>
+          ) : null}
+          {time ? (
+            <View style={styles.eventMetaRow}>
+              <Clock size={13} color={colors.textSecondary} strokeWidth={2.2} />
+              <Text style={styles.cardMeta}>{time}</Text>
+            </View>
+          ) : null}
+        </View>
+
+        <View style={styles.eventRight}>
+          <StatusBadge status={event.status} />
+          <Text style={styles.eventAmount}>S/ {event.amount_per_person}</Text>
         </View>
       </View>
-      <StatusBadge status={event.status} />
     </Pressable>
   );
 }
@@ -222,9 +272,14 @@ function EventRow({ event }: { event: EventListItem }) {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   scroll: { paddingHorizontal: spacing.lg, paddingTop: spacing.md, paddingBottom: spacing.xxxl },
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.lg },
-  eyebrow: { ...typography.caption, color: colors.textSecondary, letterSpacing: 0.4, textTransform: 'uppercase' },
-  greet: { ...typography.h1, color: colors.textPrimary },
+
+  header: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, marginBottom: spacing.lg },
+  avatar: { width: 44, height: 44, borderRadius: radius.full, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center' },
+  avatarText: { ...typography.bodyBold, color: colors.onPrimary, fontSize: 18 },
+  headerText: { flex: 1 },
+  greet: { ...typography.h2, color: colors.textPrimary },
+  greetSub: { ...typography.caption, color: colors.primaryDark, marginTop: 2 },
+  bellBtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
 
   heroCard: {
     backgroundColor: colors.primary,
@@ -245,19 +300,33 @@ const styles = StyleSheet.create({
   heroCta: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: colors.surface, alignSelf: 'flex-start', paddingHorizontal: 14, paddingVertical: 10, borderRadius: radius.full, marginTop: spacing.sm },
   heroCtaText: { ...typography.bodyBold, color: colors.primary },
 
-  sectionHeader: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginTop: spacing.lg, marginBottom: spacing.sm },
-  sectionIcon: { width: 32, height: 32, borderRadius: radius.full, backgroundColor: colors.surface, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: colors.border },
-  section: { ...typography.h2, color: colors.textPrimary },
+  sectionHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: spacing.lg, marginBottom: spacing.sm },
+  section: { ...typography.h2, color: colors.primaryDark },
+  sectionAction: { ...typography.bodyMedium, color: colors.primary },
 
-  row: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, backgroundColor: colors.surface, padding: spacing.md, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, ...shadows.card },
-  rowIcon: { width: 44, height: 44, borderRadius: radius.full, alignItems: 'center', justifyContent: 'center' },
-  rowTitle: { ...typography.bodyBold, color: colors.textPrimary },
-  rowMetaRow: { flexDirection: 'row', alignItems: 'center', gap: 4, flexWrap: 'wrap' },
-  rowMeta: { ...typography.caption, color: colors.textSecondary },
+  card: { backgroundColor: colors.surface, padding: spacing.md, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.border, ...shadows.card },
+  cardTitle: { ...typography.bodyBold, color: colors.textPrimary },
+  cardMeta: { ...typography.caption, color: colors.textSecondary, flexShrink: 1 },
+
+  groupRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
+  groupIcon: { width: 48, height: 48, borderRadius: radius.full, backgroundColor: colors.primarySoft, alignItems: 'center', justifyContent: 'center' },
+
+  eventRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
+  datePill: {
+    width: 54, paddingVertical: spacing.sm,
+    borderRadius: radius.sm,
+    backgroundColor: colors.primarySoft,
+    alignItems: 'center',
+  },
+  dateMonth: { ...typography.captionBold, color: colors.primaryDark, letterSpacing: 0.8 },
+  dateDay: { ...typography.h1, color: colors.primaryDark, lineHeight: 30, fontSize: 24 },
+  eventMetaRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  eventRight: { alignItems: 'flex-end', gap: 6 },
+  eventAmount: { ...typography.bodyBold, color: colors.textPrimary },
 
   fab: {
-    position: 'absolute', bottom: spacing.xl, right: spacing.lg,
-    backgroundColor: colors.primary, paddingHorizontal: spacing.lg, paddingVertical: 14,
+    position: 'absolute', bottom: spacing.xl, alignSelf: 'center',
+    backgroundColor: colors.primary, paddingHorizontal: spacing.xl, paddingVertical: 14,
     borderRadius: radius.full, flexDirection: 'row', alignItems: 'center', gap: spacing.sm,
     ...shadows.floating,
   },

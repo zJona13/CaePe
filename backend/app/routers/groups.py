@@ -3,7 +3,7 @@ from __future__ import annotations
 import uuid
 
 from fastapi import APIRouter, HTTPException, status
-from sqlalchemy import select
+from sqlalchemy import func, select
 
 from app.deps import CurrentUser, DBSession, OptionalUser
 from app.models import (
@@ -34,6 +34,15 @@ def _is_member(db, group_id: uuid.UUID, user_id: uuid.UUID) -> bool:
     return db.execute(stmt).first() is not None
 
 
+def _count_active_members(db, group_id: uuid.UUID) -> int:
+    return db.scalar(
+        select(func.count(GroupMember.id)).where(
+            GroupMember.group_id == group_id,
+            GroupMember.status != GroupMemberStatus.removed,
+        )
+    ) or 0
+
+
 @router.post("", response_model=GroupRead, status_code=status.HTTP_201_CREATED)
 def create_group(payload: GroupCreate, current: CurrentUser, db: DBSession) -> Group:
     code = generate_invite_code(db)
@@ -50,18 +59,35 @@ def create_group(payload: GroupCreate, current: CurrentUser, db: DBSession) -> G
     )
     db.commit()
     db.refresh(group)
+    group.members_count = _count_active_members(db, group.id)
     return group
 
 
 @router.get("", response_model=list[GroupRead])
 def list_groups(current: CurrentUser, db: DBSession) -> list[Group]:
-    stmt = (
-        select(Group)
-        .join(GroupMember, GroupMember.group_id == Group.id)
-        .where(GroupMember.user_id == current.id)
-        .where(GroupMember.status != GroupMemberStatus.removed)
+    my_group_ids = list(
+        db.execute(
+            select(GroupMember.group_id).where(
+                GroupMember.user_id == current.id,
+                GroupMember.status != GroupMemberStatus.removed,
+            )
+        ).scalars().all()
     )
-    return list(db.execute(stmt).scalars().unique().all())
+    if not my_group_ids:
+        return []
+
+    stmt = (
+        select(Group, func.count(GroupMember.id).label("members_count"))
+        .join(GroupMember, GroupMember.group_id == Group.id)
+        .where(Group.id.in_(my_group_ids))
+        .where(GroupMember.status != GroupMemberStatus.removed)
+        .group_by(Group.id)
+    )
+    result: list[Group] = []
+    for group, count in db.execute(stmt).all():
+        group.members_count = int(count)
+        result.append(group)
+    return result
 
 
 @router.get("/{group_id}", response_model=GroupRead)
@@ -71,6 +97,7 @@ def get_group(group_id: uuid.UUID, current: CurrentUser, db: DBSession) -> Group
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Group not found")
     if group.owner_id != current.id and not _is_member(db, group_id, current.id):
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Not a member of this group")
+    group.members_count = _count_active_members(db, group.id)
     return group
 
 

@@ -6,7 +6,7 @@ import { shadows } from '../theme/shadows';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
 
-type Variant = 'primary' | 'accent' | 'secondary' | 'ghost' | 'danger';
+type Variant = 'primary' | 'accent' | 'secondary' | 'ghost' | 'text' | 'danger';
 
 type Size = 'sm' | 'md' | 'lg';
 
@@ -86,6 +86,11 @@ const variantStyles: Record<Variant, { container: object; fg: string; spinner: s
     container: { backgroundColor: 'transparent', borderWidth: 2, borderColor: colors.primary },
     fg: colors.primary,
     spinner: colors.primary,
+  },
+  text: {
+    container: { backgroundColor: 'transparent' },
+    fg: colors.primaryDark,
+    spinner: colors.primaryDark,
   },
   danger: {
     container: { backgroundColor: colors.error },

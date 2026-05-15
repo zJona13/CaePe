@@ -5,7 +5,7 @@ from sqlalchemy import select
 
 from app.deps import CurrentClaims, CurrentUser, DBSession
 from app.models import User
-from app.schemas import UserCreate, UserRead
+from app.schemas import UserCreate, UserRead, UserUpdate
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -60,4 +60,14 @@ def login(current: CurrentUser) -> User:
 
 @router.get("/me", response_model=UserRead)
 def me(current: CurrentUser) -> User:
+    return current
+
+
+@router.patch("/me", response_model=UserRead)
+def update_me(payload: UserUpdate, current: CurrentUser, db: DBSession) -> User:
+    data = payload.model_dump(exclude_unset=True)
+    for field, value in data.items():
+        setattr(current, field, value)
+    db.commit()
+    db.refresh(current)
     return current

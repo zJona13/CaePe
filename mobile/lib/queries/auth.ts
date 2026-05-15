@@ -20,3 +20,14 @@ export async function provisionAccount(body: RegisterBody, token: string): Promi
 export async function fetchMe(token: string): Promise<SessionUser> {
   return apiRequest<SessionUser>('/auth/me', { token });
 }
+
+export type UpdateMeBody = {
+  name?: string | null;
+  phone?: string | null;
+  payment_method?: 'yape' | 'plin' | null;
+  payment_number?: string | null;
+};
+
+export async function updateMe(body: UpdateMeBody, token: string): Promise<SessionUser> {
+  return apiRequest<SessionUser>('/auth/me', { method: 'PATCH', body, token });
+}

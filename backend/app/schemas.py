@@ -63,6 +63,7 @@ class GroupRead(_ORM):
     owner_id: uuid.UUID
     invite_code: str
     created_at: datetime
+    members_count: int = 0
 
 
 # Group members

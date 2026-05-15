@@ -16,7 +16,7 @@ export const shadows: Record<'card' | 'elevated' | 'floating', ViewStyle> = {
     elevation: 6,
   },
   floating: {
-    shadowColor: '#14B8C4',
+    shadowColor: '#FF8775',
     shadowOpacity: 0.28,
     shadowRadius: 18,
     shadowOffset: { width: 0, height: 8 },

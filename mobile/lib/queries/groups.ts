@@ -7,6 +7,7 @@ export type Group = {
   owner_id: string;
   invite_code: string;
   created_at: string;
+  members_count: number;
 };
 
 export function useGroups() {

@@ -6,6 +6,7 @@ export type SessionUser = {
   id: string;
   email: string;
   name?: string | null;
+  phone?: string | null;
   payment_method?: 'yape' | 'plin' | null;
   payment_number?: string | null;
 };
