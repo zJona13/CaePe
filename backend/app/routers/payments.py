@@ -13,6 +13,7 @@ from app.models import (
     ParticipantPaymentStatus,
     Payment,
     PaymentStatus,
+    User,
 )
 from app.schemas import PaymentRead
 from app.services.events_service import check_and_mark_funded, utcnow
@@ -25,7 +26,11 @@ ALLOWED_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp", ".heic"}
 MAX_PROOF_BYTES = 8 * 1024 * 1024  # 8 MB
 
 
-def _save_proof(file: UploadFile) -> str:
+def _save_proof(
+    file: UploadFile,
+    expected_amount: Decimal,
+    expected_method: str | None,
+) -> str:
     raw = file.file.read()
     if len(raw) > MAX_PROOF_BYTES:
         raise HTTPException(status.HTTP_413_REQUEST_ENTITY_TOO_LARGE, "Proof too large (max 8MB)")
@@ -36,7 +41,7 @@ def _save_proof(file: UploadFile) -> str:
             "Formato no soportado. Sube una imagen jpg, png, webp o heic.",
         )
     try:
-        validate_yape_plin_proof(raw)
+        validate_yape_plin_proof(raw, expected_amount, expected_method)
     except ProofValidationError as exc:
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, str(exc)) from exc
     UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
@@ -73,7 +78,13 @@ def upload_proof(
 
     proof_url: str | None = None
     if file is not None and file.filename:
-        proof_url = _save_proof(file)
+        organizer = db.get(User, event.organizer_id)
+        expected_method = (
+            organizer.payment_method.value
+            if organizer is not None and organizer.payment_method is not None
+            else None
+        )
+        proof_url = _save_proof(file, amount, expected_method)
 
     payment = Payment(
         event_id=event_id,
