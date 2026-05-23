@@ -33,6 +33,26 @@ export function useCreateGroup() {
   });
 }
 
+export type GroupMember = {
+  id: string;
+  group_id: string;
+  user_id: string | null;
+  role: 'owner' | 'member' | 'guest';
+  status: 'active' | 'invited' | 'removed';
+  name: string | null;
+  email: string | null;
+  phone: string | null;
+  payment_method: 'yape' | 'plin' | null;
+};
+
+export function useGroupMembers(groupId: string | undefined) {
+  return useQuery({
+    queryKey: ['groups', groupId, 'members'],
+    enabled: !!groupId,
+    queryFn: () => apiRequest<GroupMember[]>(`/groups/${groupId}/members`),
+  });
+}
+
 export function useJoinGroup() {
   const qc = useQueryClient();
   return useMutation({

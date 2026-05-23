@@ -78,7 +78,7 @@ def build_whatsapp_message(event: Event, invite_code: str, base_url: str = "http
     if event.location:
         parts.append(f"📍 {event.location}")
     parts.append(f"💰 S/ {event.amount_per_person} por persona")
-    parts.append(f"🔗 {base_url}/e/{invite_code}")
+    parts.append(f"🔗 caepe://events/join/{invite_code}")
     return "\n".join(parts)
 
 

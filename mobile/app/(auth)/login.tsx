@@ -5,6 +5,7 @@ import { Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-nati
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ArrowRight, Lock, Mail } from 'lucide-react-native';
 import { Input } from '../../components/Input';
+import { KeyboardScreen } from '../../components/KeyboardScreen';
 import { PrimaryButton } from '../../components/PrimaryButton';
 import { fetchMe } from '../../lib/queries/auth';
 import { supabase } from '../../lib/supabase';
@@ -42,6 +43,7 @@ export default function Login() {
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+      <KeyboardScreen>
       <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
         <View style={styles.card}>
           <Image
@@ -120,6 +122,7 @@ export default function Login() {
           </View>
         </View>
       </ScrollView>
+      </KeyboardScreen>
     </SafeAreaView>
   );
 }

@@ -5,7 +5,7 @@ import uuid
 from fastapi import APIRouter, HTTPException, status
 from sqlalchemy import select
 
-from app.deps import CurrentUser, DBSession
+from app.deps import CurrentUser, DBSession, OptionalUser
 from app.models import (
     Event,
     EventParticipant,
@@ -63,11 +63,47 @@ def _ensure_organizer(event: Event, user_id: uuid.UUID) -> None:
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Only the organizer can perform this action")
 
 
+def _scrub_proofs(detail: EventDetailRead, event: Event, viewer_id: uuid.UUID | None) -> EventDetailRead:
+    """Hide proof_image_url from anyone except the organizer or the participant who uploaded it."""
+    is_organizer = viewer_id is not None and viewer_id == event.organizer_id
+    if is_organizer:
+        return detail
+    for p in detail.participants:
+        if viewer_id is None or p.user_id != viewer_id:
+            p.proof_image_url = None
+    return detail
+
+
 @router.post("", response_model=EventDetailRead, status_code=status.HTTP_201_CREATED)
 def create_event(payload: EventCreate, current: CurrentUser, db: DBSession) -> EventDetailRead:
     _ensure_group_access(db, payload.group_id, current.id)
 
-    n = max(len(payload.participants), 1)
+    # Resolve members → participants. Dedupe by user_id.
+    seen_user_ids: set[uuid.UUID] = set()
+    seeded: list[tuple[uuid.UUID | None, str, str | None]] = []  # (user_id, name, phone)
+
+    # Honor any explicit manual participants first (legacy/test path).
+    for entry in payload.participants:
+        seeded.append((entry.user_id, entry.name, entry.phone))
+        if entry.user_id is not None:
+            seen_user_ids.add(entry.user_id)
+
+    # Member-based path (mobile): auto-include organizer + selected group members.
+    use_member_path = bool(payload.member_user_ids) or not payload.participants
+    if use_member_path:
+        if current.id not in seen_user_ids:
+            seeded.append((current.id, current.name or current.email, current.phone))
+            seen_user_ids.add(current.id)
+        for uid in payload.member_user_ids:
+            if uid in seen_user_ids:
+                continue
+            u = db.get(User, uid)
+            if u is None:
+                continue
+            seeded.append((u.id, u.name or u.email, u.phone))
+            seen_user_ids.add(u.id)
+
+    n = max(len(seeded), 1)
     amount = calculate_amount_per_person(payload.total_budget, n)
 
     event = Event(
@@ -85,13 +121,13 @@ def create_event(payload: EventCreate, current: CurrentUser, db: DBSession) -> E
     db.add(event)
     db.flush()
 
-    for entry in payload.participants:
+    for uid, name, phone in seeded:
         db.add(
             EventParticipant(
                 event_id=event.id,
-                user_id=entry.user_id,
-                name=entry.name,
-                phone=entry.phone,
+                user_id=uid,
+                name=name,
+                phone=phone,
                 amount_due=amount,
             )
         )
@@ -102,7 +138,7 @@ def create_event(payload: EventCreate, current: CurrentUser, db: DBSession) -> E
     if organizer is not None:
         detail.organizer_payment_method = organizer.payment_method
         detail.organizer_payment_number = organizer.payment_number
-    return detail
+    return _scrub_proofs(detail, event, current.id)
 
 
 @router.get("", response_model=list[EventRead])
@@ -117,7 +153,7 @@ def list_events(current: CurrentUser, db: DBSession) -> list[Event]:
 
 
 @router.get("/{event_id}", response_model=EventDetailRead)
-def get_event(event_id: uuid.UUID, db: DBSession) -> EventDetailRead:
+def get_event(event_id: uuid.UUID, db: DBSession, current: OptionalUser) -> EventDetailRead:
     event = db.get(Event, event_id)
     if event is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Event not found")
@@ -126,7 +162,7 @@ def get_event(event_id: uuid.UUID, db: DBSession) -> EventDetailRead:
     if organizer is not None:
         detail.organizer_payment_method = organizer.payment_method
         detail.organizer_payment_number = organizer.payment_number
-    return detail
+    return _scrub_proofs(detail, event, current.id if current else None)
 
 
 @router.patch("/{event_id}", response_model=EventDetailRead)
@@ -230,6 +266,51 @@ def update_participant_payment(
         participant.paid_at = None
     db.flush()
     check_and_mark_funded(db, event_id)
+    db.commit()
+    db.refresh(participant)
+    return participant
+
+
+@router.post(
+    "/join/{invite_code}",
+    response_model=EventParticipantRead,
+    status_code=status.HTTP_200_OK,
+)
+def join_event(
+    invite_code: str, current: CurrentUser, db: DBSession
+) -> EventParticipant:
+    """Join an event via its invitation code. Idempotent for the same user."""
+    invitation = db.execute(
+        select(Invitation).where(
+            Invitation.invite_code == invite_code,
+            Invitation.event_id.is_not(None),
+        )
+    ).scalar_one_or_none()
+    if invitation is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Invitation not found")
+    event = db.get(Event, invitation.event_id)
+    if event is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Event not found")
+
+    existing = db.execute(
+        select(EventParticipant).where(
+            EventParticipant.event_id == event.id,
+            EventParticipant.user_id == current.id,
+        )
+    ).scalar_one_or_none()
+    if existing is not None:
+        return existing
+
+    participant = EventParticipant(
+        event_id=event.id,
+        user_id=current.id,
+        name=current.name or current.email,
+        phone=current.phone,
+        amount_due=event.amount_per_person,
+    )
+    db.add(participant)
+    db.flush()
+    recalculate_on_participant_change(db, event.id)
     db.commit()
     db.refresh(participant)
     return participant

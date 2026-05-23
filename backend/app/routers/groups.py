@@ -12,10 +12,12 @@ from app.models import (
     GroupMemberRole,
     GroupMemberStatus,
     Invitation,
+    User,
 )
 from app.schemas import (
     GroupCreate,
     GroupJoinBody,
+    GroupMemberDetailRead,
     GroupMemberRead,
     GroupRead,
     InvitationRead,
@@ -99,6 +101,42 @@ def get_group(group_id: uuid.UUID, current: CurrentUser, db: DBSession) -> Group
         raise HTTPException(status.HTTP_403_FORBIDDEN, "Not a member of this group")
     group.members_count = _count_active_members(db, group.id)
     return group
+
+
+@router.get("/{group_id}/members", response_model=list[GroupMemberDetailRead])
+def list_members(
+    group_id: uuid.UUID, current: CurrentUser, db: DBSession
+) -> list[GroupMemberDetailRead]:
+    group = db.get(Group, group_id)
+    if group is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Group not found")
+    if group.owner_id != current.id and not _is_member(db, group_id, current.id):
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Not a member of this group")
+
+    rows = db.execute(
+        select(GroupMember, User)
+        .join(User, User.id == GroupMember.user_id, isouter=True)
+        .where(
+            GroupMember.group_id == group_id,
+            GroupMember.status != GroupMemberStatus.removed,
+        )
+    ).all()
+    result: list[GroupMemberDetailRead] = []
+    for member, user in rows:
+        result.append(
+            GroupMemberDetailRead(
+                id=member.id,
+                group_id=member.group_id,
+                user_id=member.user_id,
+                role=member.role,
+                status=member.status,
+                name=user.name if user else None,
+                email=user.email if user else None,
+                phone=user.phone if user else None,
+                payment_method=user.payment_method if user else None,
+            )
+        )
+    return result
 
 
 @router.post(

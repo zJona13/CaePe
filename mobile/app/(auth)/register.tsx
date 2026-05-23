@@ -5,6 +5,7 @@ import { Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-nati
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { CreditCard, Eye, EyeOff, Lock, Mail, Phone, User } from 'lucide-react-native';
 import { Input } from '../../components/Input';
+import { KeyboardScreen } from '../../components/KeyboardScreen';
 import { PrimaryButton } from '../../components/PrimaryButton';
 import { provisionAccount } from '../../lib/queries/auth';
 import { supabase } from '../../lib/supabase';
@@ -64,6 +65,7 @@ export default function Register() {
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+      <KeyboardScreen>
       <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
         <View style={styles.card}>
           <View style={styles.logoFrame}>
@@ -173,6 +175,7 @@ export default function Register() {
           </View>
         </View>
       </ScrollView>
+      </KeyboardScreen>
     </SafeAreaView>
   );
 }

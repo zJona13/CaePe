@@ -11,6 +11,7 @@ import { ProofViewerModal } from '../../../components/ProofViewerModal';
 import { ScreenHeader } from '../../../components/ScreenHeader';
 import { StatusBadge } from '../../../components/StatusBadge';
 import { useEvent } from '../../../lib/queries/events';
+import { useGroupMembers } from '../../../lib/queries/groups';
 import { resolveProofUrl, useUploadProof } from '../../../lib/queries/payments';
 import { useSession } from '../../../lib/store';
 import { SLANG } from '../../../lib/slang';
@@ -24,6 +25,7 @@ export default function EventDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const event = useEvent(id);
   const user = useSession((s) => s.user);
+  const groupMembers = useGroupMembers(event.data?.group_id);
   const uploadProof = useUploadProof(id ?? '');
   const [viewerUri, setViewerUri] = useState<string | null>(null);
   const [viewerTitle, setViewerTitle] = useState<string>('');
@@ -152,7 +154,9 @@ export default function EventDetail() {
         <View style={{ gap: spacing.sm }}>
           {e.participants.map((p) => {
             const hasProof = !!p.proof_image_url;
-            const canUpload = p.payment_status === 'pending';
+            const isOwnRow = !!user && p.user_id === user.id;
+            const canViewProof = hasProof && (isOrganizer || isOwnRow);
+            const canUpload = p.payment_status === 'pending' && (isOrganizer || isOwnRow || isGuest);
             return (
               <ParticipantRow
                 key={p.id}
@@ -160,14 +164,36 @@ export default function EventDetail() {
                 amountDue={p.amount_due}
                 status={p.payment_status}
                 isOrganizer={p.user_id === e.organizer_id}
-                hasProof={hasProof}
-                onViewProof={hasProof ? () => openProof(p.proof_image_url, p.name) : undefined}
+                hasProof={canViewProof}
+                onViewProof={canViewProof ? () => openProof(p.proof_image_url, p.name) : undefined}
                 onUploadProof={canUpload ? () => pickAndUpload(p.id, p.amount_due) : undefined}
                 uploading={uploadProof.isPending && uploadProof.variables?.participantId === p.id}
               />
             );
           })}
         </View>
+
+        {!isGuest && groupMembers.data && groupMembers.data.length > 0 ? (
+          <>
+            <Text style={styles.section}>Miembros del grupo</Text>
+            <Text style={styles.sectionHint}>Quiénes están en el grupo y si ya se sumaron al evento.</Text>
+            <View style={{ gap: spacing.xs }}>
+              {groupMembers.data.map((m) => {
+                const joined = e.participants.some((p) => p.user_id && p.user_id === m.user_id);
+                return (
+                  <View key={m.id} style={styles.memberRow}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.memberName}>{m.name ?? m.email ?? 'Sin nombre'}</Text>
+                    </View>
+                    <Text style={[styles.memberStatus, joined ? styles.memberJoined : styles.memberNotJoined]}>
+                      {joined ? 'En el evento' : 'Aún no se suma'}
+                    </Text>
+                  </View>
+                );
+              })}
+            </View>
+          </>
+        ) : null}
 
         <View style={styles.actions}>
           {isGuest ? (
@@ -232,4 +258,10 @@ const styles = StyleSheet.create({
   section: { ...typography.h2, color: colors.textPrimary, marginTop: spacing.sm },
   sectionHint: { ...typography.caption, color: colors.textSecondary, marginTop: -spacing.xs },
   actions: { gap: spacing.sm, marginTop: spacing.md },
+
+  memberRow: { flexDirection: 'row', alignItems: 'center', padding: spacing.md, borderRadius: radius.md, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, gap: spacing.sm },
+  memberName: { ...typography.bodyBold, color: colors.textPrimary },
+  memberStatus: { ...typography.caption, fontWeight: '700' },
+  memberJoined: { color: colors.primary },
+  memberNotJoined: { color: colors.textMuted },
 });

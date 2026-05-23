@@ -43,7 +43,8 @@ export type CreateEventBody = {
   time?: string | null;
   location?: string | null;
   total_budget: string;
-  participants: { name: string; phone?: string | null }[];
+  participants?: { name: string; phone?: string | null }[];
+  member_user_ids?: string[];
 };
 
 export function useEvents() {
@@ -80,6 +81,18 @@ export function useCreateEvent() {
   return useMutation({
     mutationFn: (body: CreateEventBody) => apiRequest<EventDetail>('/events', { method: 'POST', body }),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['events'] }); },
+  });
+}
+
+export function useJoinEvent() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (inviteCode: string) =>
+      apiRequest<EventParticipant>(`/events/join/${inviteCode}`, { method: 'POST' }),
+    onSuccess: (_d, code) => {
+      qc.invalidateQueries({ queryKey: ['events'] });
+      qc.invalidateQueries({ queryKey: ['event'] });
+    },
   });
 }
 

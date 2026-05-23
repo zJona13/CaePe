@@ -16,6 +16,7 @@ from app.models import (
 )
 from app.schemas import PaymentRead
 from app.services.events_service import check_and_mark_funded, utcnow
+from app.services.proof_validator import ProofValidationError, validate_yape_plin_proof
 
 router = APIRouter(prefix="/payments", tags=["payments"])
 
@@ -30,7 +31,14 @@ def _save_proof(file: UploadFile) -> str:
         raise HTTPException(status.HTTP_413_REQUEST_ENTITY_TOO_LARGE, "Proof too large (max 8MB)")
     ext = Path(file.filename or "").suffix.lower()
     if ext not in ALLOWED_EXTENSIONS:
-        ext = ".jpg"
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_ENTITY,
+            "Formato no soportado. Sube una imagen jpg, png, webp o heic.",
+        )
+    try:
+        validate_yape_plin_proof(raw)
+    except ProofValidationError as exc:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, str(exc)) from exc
     UPLOADS_DIR.mkdir(parents=True, exist_ok=True)
     filename = f"{uuid.uuid4().hex}{ext}"
     dest = UPLOADS_DIR / filename

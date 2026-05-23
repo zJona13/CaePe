@@ -15,6 +15,11 @@ class Settings(BaseSettings):
     supabase_jwt_secret: str = ""
     supabase_jwt_leeway_seconds: int = 60
 
+    # Google Vision OCR for proof validation. When enabled, uploaded receipts must
+    # contain 'yape' or 'plin' tokens to be accepted.
+    google_vision_enabled: bool = False
+    google_vision_api_key: str = ""
+
     @property
     def jwt_algorithms_list(self) -> list[str]:
         return [a.strip() for a in self.supabase_jwt_algorithms.split(",") if a.strip()]

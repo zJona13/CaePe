@@ -81,6 +81,18 @@ class GroupMemberRead(_ORM):
     status: GroupMemberStatus
 
 
+class GroupMemberDetailRead(_ORM):
+    id: uuid.UUID
+    group_id: uuid.UUID
+    user_id: Optional[uuid.UUID] = None
+    role: GroupMemberRole
+    status: GroupMemberStatus
+    name: Optional[str] = None
+    email: Optional[str] = None
+    phone: Optional[str] = None
+    payment_method: Optional[PaymentMethod] = None
+
+
 # Plans
 class PlanCreate(BaseModel):
     name: str = Field(min_length=1, max_length=120)
@@ -168,6 +180,7 @@ class EventCreate(BaseModel):
     location: Optional[str] = None
     total_budget: Decimal
     participants: list[EventParticipantCreate] = Field(default_factory=list)
+    member_user_ids: list[uuid.UUID] = Field(default_factory=list)
 
 
 class EventUpdate(BaseModel):

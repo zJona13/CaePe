@@ -5,6 +5,7 @@ import { Linking, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Check, Users } from 'lucide-react-native';
 import { Input } from '../../components/Input';
+import { KeyboardScreen } from '../../components/KeyboardScreen';
 import { PrimaryButton } from '../../components/PrimaryButton';
 import { ScreenHeader } from '../../components/ScreenHeader';
 import { useCreateGroup, type Group } from '../../lib/queries/groups';
@@ -64,6 +65,7 @@ export default function NewGroup() {
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <ScreenHeader title="Nuevo grupo" subtitle="Junta a tu mancha en un toque" />
+      <KeyboardScreen>
       <ScrollView contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled">
         <View style={styles.heroIcon}>
           <Users size={48} color={colors.secondary} strokeWidth={2.2} />
@@ -86,6 +88,7 @@ export default function NewGroup() {
           <PrimaryButton label={SLANG.ctaCreateGroup} onPress={onSubmit} loading={createGroup.isPending} />
         </View>
       </ScrollView>
+      </KeyboardScreen>
     </SafeAreaView>
   );
 }

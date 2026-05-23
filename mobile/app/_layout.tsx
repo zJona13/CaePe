@@ -41,7 +41,7 @@ function AuthGuard() {
       const inAuthGroup = segs[0] === '(auth)';
       const isPublicEvent =
         segs[0] === 'events' &&
-        (segs[2] === undefined || segs[2] === 'funded');
+        (segs[2] === undefined || segs[2] === 'funded' || segs[1] === 'join');
       // Expo router for /events/[id]/index resolves to segments = ['events', '<id>'] (index is collapsed)
 
       if (!token) {
