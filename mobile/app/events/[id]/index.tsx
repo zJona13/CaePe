@@ -164,7 +164,7 @@ export default function EventDetail() {
                 amountDue={p.amount_due}
                 status={p.payment_status}
                 isOrganizer={p.user_id === e.organizer_id}
-                hasProof={canViewProof}
+                hasProof={hasProof}
                 onViewProof={canViewProof ? () => openProof(p.proof_image_url, p.name) : undefined}
                 onUploadProof={canUpload ? () => pickAndUpload(p.id, p.amount_due) : undefined}
                 uploading={uploadProof.isPending && uploadProof.variables?.participantId === p.id}
