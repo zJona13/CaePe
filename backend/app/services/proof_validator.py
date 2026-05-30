@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 TEMPLATES_DIR = Path(__file__).resolve().parent.parent / "assets" / "templates"
 
 _AMOUNT_PATTERNS = (
-    re.compile(r"s/\.?\s*([\d]{1,6}(?:[.,]\d{2})?)", re.IGNORECASE),
+    re.compile(r"s\s*[/il|1]\s*\.?\s*([\d]{1,6}(?:[.,]\d{2})?)", re.IGNORECASE),
 )
 _OPERATION_PATTERNS = (
     re.compile(r"(?:operaci[oó]n|c[oó]digo(?:\s+de\s+seguridad)?)\D{0,15}(\d{6,15})", re.IGNORECASE),
