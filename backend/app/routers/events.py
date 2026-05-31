@@ -36,6 +36,13 @@ from app.services.events_service import (
     utcnow,
 )
 from app.services.invitations_service import generate_invite_code
+from app.services.notifications_service import (
+    notify_added_to_event,
+    notify_event_created,
+    notify_event_funded,
+    notify_joined_event,
+    notify_payment_confirmed,
+)
 
 router = APIRouter(prefix="/events", tags=["events"])
 
@@ -139,6 +146,7 @@ def create_event(payload: EventCreate, current: CurrentUser, db: DBSession) -> E
         )
     db.commit()
     db.refresh(event)
+    notify_event_created(db, event)
     organizer = db.get(User, event.organizer_id)
     detail = EventDetailRead.model_validate(event)
     if organizer is not None:
@@ -241,6 +249,7 @@ def add_participant(
     recalculate_on_participant_change(db, event_id)
     db.commit()
     db.refresh(participant)
+    notify_added_to_event(db, event, participant.user_id)
     return participant
 
 
@@ -265,15 +274,20 @@ def update_participant_payment(
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Participant not found")
 
     participant.payment_status = payload.payment_status
-    if payload.payment_status == ParticipantPaymentStatus.paid:
+    became_paid = payload.payment_status == ParticipantPaymentStatus.paid
+    if became_paid:
         if participant.paid_at is None:
             participant.paid_at = utcnow()
     else:
         participant.paid_at = None
     db.flush()
-    check_and_mark_funded(db, event_id)
+    funded = check_and_mark_funded(db, event_id)
     db.commit()
     db.refresh(participant)
+    if became_paid:
+        notify_payment_confirmed(db, event, participant)
+    if funded:
+        notify_event_funded(db, event)
     return participant
 
 
@@ -319,6 +333,7 @@ def join_event(
     recalculate_on_participant_change(db, event.id)
     db.commit()
     db.refresh(participant)
+    notify_joined_event(db, event, current.name or current.email, current.id)
     return participant
 
 

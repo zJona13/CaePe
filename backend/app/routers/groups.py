@@ -23,6 +23,7 @@ from app.schemas import (
     InvitationRead,
 )
 from app.services.invitations_service import generate_invite_code
+from app.services.notifications_service import notify_group_join
 
 router = APIRouter(prefix="/groups", tags=["groups"])
 
@@ -195,6 +196,7 @@ def join_group(
             existing.status = GroupMemberStatus.active
             db.commit()
             db.refresh(existing)
+            notify_group_join(db, group, current.name or current.email, current.id)
             return existing
         member = GroupMember(
             group_id=group.id,
@@ -212,4 +214,6 @@ def join_group(
     db.add(member)
     db.commit()
     db.refresh(member)
+    if current is not None:
+        notify_group_join(db, group, current.name or current.email, current.id)
     return member

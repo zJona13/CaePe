@@ -5,6 +5,16 @@ import type { EventParticipant } from './events';
 
 const BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? 'http://10.0.2.2:8000';
 
+export function useSendReminder(eventId: string) {
+  return useMutation({
+    mutationFn: () =>
+      apiRequest<{ notified: number }>(
+        `/notifications/send-reminder?event_id=${eventId}`,
+        { method: 'POST' },
+      ),
+  });
+}
+
 export function useMarkPayment(eventId: string) {
   const qc = useQueryClient();
   return useMutation({

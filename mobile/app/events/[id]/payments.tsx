@@ -1,13 +1,14 @@
 import { useLocalSearchParams } from 'expo-router';
 import { useState } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { CheckCircle2, Lock } from 'lucide-react-native';
+import { BellRing, CheckCircle2, Lock } from 'lucide-react-native';
 import { ParticipantRow } from '../../../components/ParticipantRow';
+import { PrimaryButton } from '../../../components/PrimaryButton';
 import { ProofViewerModal } from '../../../components/ProofViewerModal';
 import { ScreenHeader } from '../../../components/ScreenHeader';
 import { useEvent } from '../../../lib/queries/events';
-import { resolveProofUrl, useMarkPayment } from '../../../lib/queries/payments';
+import { resolveProofUrl, useMarkPayment, useSendReminder } from '../../../lib/queries/payments';
 import { useSession } from '../../../lib/store';
 import { SLANG } from '../../../lib/slang';
 import { colors } from '../../../theme/colors';
@@ -20,6 +21,7 @@ export default function Payments() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const event = useEvent(id);
   const mark = useMarkPayment(id ?? '');
+  const reminder = useSendReminder(id ?? '');
   const user = useSession((s) => s.user);
   const [viewerUri, setViewerUri] = useState<string | null>(null);
   const [viewerTitle, setViewerTitle] = useState<string>('');
@@ -29,6 +31,20 @@ export default function Payments() {
     if (!uri) return;
     setViewerTitle(`Comprobante · ${name}`);
     setViewerUri(uri);
+  };
+
+  const onRemind = async () => {
+    try {
+      const res = await reminder.mutateAsync();
+      Alert.alert(
+        'Recordatorio enviado',
+        res.notified > 0
+          ? `Avisamos a ${res.notified} ${res.notified === 1 ? 'persona' : 'personas'} con pago pendiente.`
+          : 'No hay pagos pendientes con la app instalada.',
+      );
+    } catch (e) {
+      Alert.alert('No se pudo enviar', (e as Error).message);
+    }
   };
 
   if (event.isLoading || !event.data) {
@@ -69,6 +85,16 @@ export default function Payments() {
             <Text style={styles.progressHint}>Marca cada cuota cuando llegue a tu Yape o Plin</Text>
           </View>
         </View>
+
+        {paidCount < totalCount ? (
+          <PrimaryButton
+            variant="ghost"
+            label="Recordar pago a los pendientes"
+            onPress={onRemind}
+            loading={reminder.isPending}
+            icon={<BellRing size={16} color={colors.primary} strokeWidth={2.5} />}
+          />
+        ) : null}
 
         <View style={{ gap: spacing.sm }}>
           {e.participants.map((p) => {

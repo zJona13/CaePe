@@ -268,3 +268,19 @@ class InvitationRead(_ORM):
     invite_code: str
     expires_at: Optional[datetime] = None
     created_at: datetime
+
+
+# Notifications
+class DeviceTokenRegister(BaseModel):
+    token: str
+    platform: Optional[str] = None
+
+
+class DeviceTokenRead(_ORM):
+    id: uuid.UUID
+    token: str
+    platform: Optional[str] = None
+
+
+class ReminderResult(BaseModel):
+    notified: int

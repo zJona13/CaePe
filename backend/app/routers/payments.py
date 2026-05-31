@@ -16,6 +16,7 @@ from app.models import (
 )
 from app.schemas import PaymentRead
 from app.services.events_service import check_and_mark_funded, utcnow
+from app.services.notifications_service import notify_event_funded, notify_payment_confirmed
 
 router = APIRouter(prefix="/payments", tags=["payments"])
 
@@ -108,7 +109,11 @@ def confirm_payment(
         if participant.paid_at is None:
             participant.paid_at = utcnow()
     db.flush()
-    check_and_mark_funded(db, payment.event_id)
+    funded = check_and_mark_funded(db, payment.event_id)
     db.commit()
     db.refresh(payment)
+    if participant is not None:
+        notify_payment_confirmed(db, event, participant)
+    if funded:
+        notify_event_funded(db, event)
     return payment

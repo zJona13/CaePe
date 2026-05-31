@@ -117,6 +117,15 @@ SQLite in-memory + JWT HS256 de prueba. No requiere Postgres.
 - `POST /payments/upload-proof` (multipart; guarda la imagen del comprobante)
 - `PATCH /payments/{id}/confirm`
 
+**Notifications** (push vía Expo)
+- `POST /notifications/register-token` — guarda el ExpoPushToken del dispositivo
+- `POST /notifications/unregister-token` — lo elimina (al cerrar sesión)
+- `POST /notifications/send-reminder?event_id=...` — el organizador recuerda a los pendientes
+
+Triggers automáticos: alguien entra al grupo, evento creado, te sumaron (sube comprobante), se sumaron a tu evento, pago confirmado, evento fondeado.
+
+> **Expo Go no recibe push remoto (SDK 53+).** Para probar notificaciones reales usa un *development build* o el APK de EAS (`eas build --profile preview`). El backend envía a `https://exp.host/--/api/v2/push/send`.
+
 ---
 
 ## Comprobantes (Yape/Plin)
@@ -178,6 +187,12 @@ npm run android   # expo run:android
 npm run ios       # expo run:ios
 ```
 
+### Para recibir push de verdad necesitas salir de Expo Go (no soporta push remoto desde SDK 53):
+cd mobile
+eas init                 # crea el projectId de EAS (necesario para el token)
+eas build --profile preview --platform android   # genera el APK
+En Expo Go el token simplemente no se obtiene (lo manejé sin que crashee), pero no llegarán las notificaciones.
+
 ---
 
 ## Pantallas (13 implementadas)
@@ -214,38 +229,3 @@ Recorrer este flujo en Android emulator + iOS sim:
 - [ ] Reabrir app → salta onboarding (persistido)
 - [ ] Deep link sin sesión: `caepe://events/<uuid>` → modo invitado, sin botones mutación, CTA "Únete a CaePe"
 
----
-
-## Últimos cambios (mayo 2026)
-
-- **283cc12** — `ParticipantRow` usa `hasProof` real (no `canViewProof`)
-- **2f94f3b** — Templates Yape/Plin agregados para template matching
-- **88c1aa9** — Google Vision API reemplazado por OpenCV template matching (cero costo)
-- **8f24d39** — Arreglo arranque app + comprobantes + teclado + miembros dinámicos
-- **acd42bb** — Sistema de comprobantes inicial
-
-Estado actual: ramas `master`, 2 commits ahead de `origin/master`.
-
----
-
-## Fases del proyecto (`CLAUDE.md`)
-
-- ✅ Fase 0: scaffolding monorepo
-- ✅ Fase 1: data layer + auth Supabase + seed planes Chiclayo
-- ✅ Fase 2: core MVP (grupos, eventos, participantes, pagos)
-- ✅ Fase 3: 13 pantallas mobile + subida de comprobantes (validación manual del organizador)
-- ⏳ Fase 4: notificaciones FCM + métricas + Dockerfile + Cloud Run + EAS + GitHub Actions
-
-**Para deploy a producción:** ver [`DEPLOY.md`](./DEPLOY.md).
-
----
-
-## Troubleshooting rápido
-
-| Problema | Fix |
-|---|---|
-| Mobile no conecta backend | `EXPO_PUBLIC_API_URL` debe ser IP LAN o URL pública, no `localhost` |
-| `401` en `/auth/me` | Re-copiar `SUPABASE_JWT_SECRET` de Dashboard → API |
-| `npm install` falla por React 19 peers | Usar `--legacy-peer-deps` |
-
-Resto: ver `DEPLOY.md` sección 9.

@@ -17,6 +17,9 @@ from app.main import app
 
 TEST_DB_URL = os.environ.get("TEST_DATABASE_URL", "sqlite:///:memory:")
 
+# No enviar push reales a Expo durante los tests.
+settings.push_enabled = False
+
 
 @pytest.fixture(scope="session")
 def engine():

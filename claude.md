@@ -327,13 +327,6 @@ mobile/
 ├── lib/notifications.ts           # registro token FCM con expo-notifications
 └── lib/analytics.ts               # tracking de eventos clave
 
-infra/
-├── deploy/cloud-run.md            # guía paso a paso con gcloud
-├── deploy/eas-build.md            # guía generar APK con eas build
-└── .github/workflows/
-    ├── backend-ci.yml             # lint + pytest en cada PR
-    └── backend-deploy.yml         # build image + deploy Cloud Run en push a main
-
 ## Notificaciones obligatorias
 - Invitación a evento (al agregar participante)
 - Recordatorio de pago (endpoint manual /notifications/send-reminder)

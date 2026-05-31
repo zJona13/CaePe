@@ -15,6 +15,13 @@ class Settings(BaseSettings):
     supabase_jwt_secret: str = ""
     supabase_jwt_leeway_seconds: int = 60
 
+    # Push notifications (Expo). El backend hace POST a la API de Expo con el
+    # ExpoPushToken del dispositivo. push_enabled=False desactiva el envío real
+    # (útil en tests/local). expo_access_token es opcional (security de Expo).
+    push_enabled: bool = True
+    expo_push_url: str = "https://exp.host/--/api/v2/push/send"
+    expo_access_token: str = ""
+
     @property
     def jwt_algorithms_list(self) -> list[str]:
         return [a.strip() for a in self.supabase_jwt_algorithms.split(",") if a.strip()]

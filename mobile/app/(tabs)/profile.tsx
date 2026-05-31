@@ -6,6 +6,7 @@ import { Check, ChevronRight, LogOut, Settings, User } from 'lucide-react-native
 import { Input } from '../../components/Input';
 import { PrimaryButton } from '../../components/PrimaryButton';
 import { supabase } from '../../lib/supabase';
+import { unregisterPushToken } from '../../lib/notifications';
 import { useSession } from '../../lib/store';
 import { SLANG } from '../../lib/slang';
 import { colors } from '../../theme/colors';
@@ -38,6 +39,7 @@ export default function Profile() {
   };
 
   const onLogout = async () => {
+    await unregisterPushToken();
     await supabase.auth.signOut();
     clearSession();
     router.replace('/(auth)/onboarding');
