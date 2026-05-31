@@ -72,7 +72,7 @@ export default function Payments() {
 
         <View style={{ gap: spacing.sm }}>
           {e.participants.map((p) => {
-            const hasProof = !!p.proof_image_url;
+            const hasProof = p.has_proof;
             return (
               <ParticipantRow
                 key={p.id}
@@ -84,7 +84,7 @@ export default function Payments() {
                 onMarkPaid={() => mark.mutate({ participantId: p.id, status: 'paid' })}
                 marking={mark.isPending && mark.variables?.participantId === p.id}
                 hasProof={hasProof}
-                onViewProof={hasProof ? () => openProof(p.proof_image_url, p.name) : undefined}
+                onViewProof={p.proof_image_url ? () => openProof(p.proof_image_url, p.name) : undefined}
               />
             );
           })}

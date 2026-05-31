@@ -64,7 +64,13 @@ def _ensure_organizer(event: Event, user_id: uuid.UUID) -> None:
 
 
 def _scrub_proofs(detail: EventDetailRead, event: Event, viewer_id: uuid.UUID | None) -> EventDetailRead:
-    """Hide proof_image_url from anyone except the organizer or the participant who uploaded it."""
+    """Hide proof_image_url from anyone except the organizer or the participant who uploaded it.
+
+    has_proof is set first from the real URL so todos vean el estado "ya subido"
+    aunque la URL quede oculta.
+    """
+    for p in detail.participants:
+        p.has_proof = bool(p.proof_image_url)
     is_organizer = viewer_id is not None and viewer_id == event.organizer_id
     if is_organizer:
         return detail

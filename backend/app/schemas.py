@@ -163,6 +163,9 @@ class EventParticipantRead(_ORM):
     amount_due: Decimal
     payment_status: ParticipantPaymentStatus
     proof_image_url: Optional[str] = None
+    # Siempre presente: indica que existe un comprobante aunque la URL se oculte
+    # a quien no es organizador ni dueño de la fila.
+    has_proof: bool = False
     paid_at: Optional[datetime] = None
 
 

@@ -12,6 +12,7 @@ export type EventParticipant = {
   amount_due: string;
   payment_status: 'pending' | 'paid';
   proof_image_url: string | null;
+  has_proof: boolean;
   paid_at: string | null;
 };
 
@@ -69,7 +70,10 @@ export function useEvent(id: string | undefined) {
   return useQuery({
     queryKey: ['event', id],
     enabled: !!id,
-    queryFn: () => apiRequest<EventDetail>(`/events/${id}`, { auth: false }),
+    // Enviamos el token si existe (sin exigirlo): así el backend reconoce al
+    // organizador/dueño y NO oculta las URLs de comprobantes. Los invitados sin
+    // sesión siguen funcionando (sin header → lectura pública).
+    queryFn: () => apiRequest<EventDetail>(`/events/${id}`),
     refetchInterval: 5_000,
     refetchOnMount: 'always',
     staleTime: 0,

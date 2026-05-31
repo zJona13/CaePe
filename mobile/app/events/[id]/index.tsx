@@ -9,6 +9,7 @@ import { ParticipantRow } from '../../../components/ParticipantRow';
 import { PrimaryButton } from '../../../components/PrimaryButton';
 import { ProofViewerModal } from '../../../components/ProofViewerModal';
 import { ScreenHeader } from '../../../components/ScreenHeader';
+import { Toast } from '../../../components/Toast';
 import { StatusBadge } from '../../../components/StatusBadge';
 import { useEvent } from '../../../lib/queries/events';
 import { useGroupMembers } from '../../../lib/queries/groups';
@@ -29,6 +30,7 @@ export default function EventDetail() {
   const uploadProof = useUploadProof(id ?? '');
   const [viewerUri, setViewerUri] = useState<string | null>(null);
   const [viewerTitle, setViewerTitle] = useState<string>('');
+  const [toast, setToast] = useState<{ title: string; message?: string } | null>(null);
 
   useEffect(() => {
     if (event.data?.status === 'funded') {
@@ -67,6 +69,7 @@ export default function EventDetail() {
         fileName: asset.fileName ?? 'proof.jpg',
         mimeType: asset.mimeType ?? 'image/jpeg',
       });
+      setToast({ title: '¡Comprobante subido!', message: 'El organizador lo revisará para confirmar tu pago.' });
     } catch (err) {
       Alert.alert('No se pudo subir', (err as Error).message);
     }
@@ -153,9 +156,9 @@ export default function EventDetail() {
         <Text style={styles.sectionHint}>Encuentra tu nombre y sube tu comprobante de Yape/Plin.</Text>
         <View style={{ gap: spacing.sm }}>
           {e.participants.map((p) => {
-            const hasProof = !!p.proof_image_url;
+            const hasProof = p.has_proof;
             const isOwnRow = !!user && p.user_id === user.id;
-            const canViewProof = hasProof && (isOrganizer || isOwnRow);
+            const canViewProof = !!p.proof_image_url && (isOrganizer || isOwnRow);
             const canUpload = p.payment_status === 'pending' && (isOrganizer || isOwnRow || isGuest);
             return (
               <ParticipantRow
@@ -219,6 +222,13 @@ export default function EventDetail() {
         uri={viewerUri}
         title={viewerTitle}
         onClose={() => setViewerUri(null)}
+      />
+
+      <Toast
+        visible={toast !== null}
+        title={toast?.title ?? ''}
+        message={toast?.message}
+        onHide={() => setToast(null)}
       />
     </SafeAreaView>
   );

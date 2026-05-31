@@ -1,5 +1,5 @@
 import { StyleSheet, Text, View } from 'react-native';
-import { Eye, Upload } from 'lucide-react-native';
+import { Eye, Upload, CheckCircle2 } from 'lucide-react-native';
 import { PaymentStatusBadge } from './PaymentStatusBadge';
 import { PrimaryButton } from './PrimaryButton';
 import { colors } from '../theme/colors';
@@ -61,7 +61,15 @@ export function ParticipantRow({
               </View>
             )}
           </View>
-          <PaymentStatusBadge status={status} />
+          <View style={styles.badgeRow}>
+            <PaymentStatusBadge status={status} />
+            {hasProof ? (
+              <View style={styles.proofChip}>
+                <CheckCircle2 size={13} color={colors.successDark} strokeWidth={2.6} />
+                <Text style={styles.proofChipText}>Comprobante subido</Text>
+              </View>
+            ) : null}
+          </View>
         </View>
         <View style={styles.right}>
           <Text style={styles.amount}>S/ {amountDue}</Text>
@@ -124,6 +132,13 @@ const styles = StyleSheet.create({
   },
   avatarText: { fontSize: 18, fontWeight: '800', color: '#FFFFFF' },
   body: { flex: 1, gap: 6 },
+  badgeRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, flexWrap: 'wrap' },
+  proofChip: {
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    backgroundColor: colors.badgePaidBg,
+    paddingHorizontal: 8, paddingVertical: 3, borderRadius: radius.full,
+  },
+  proofChipText: { fontSize: 11, fontWeight: '700', color: colors.successDark, letterSpacing: 0.2 },
   nameRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, flexWrap: 'wrap' },
   name: { ...typography.bodyBold, color: colors.textPrimary },
   organizerTag: { backgroundColor: colors.secondarySoft, paddingHorizontal: 8, paddingVertical: 2, borderRadius: radius.full },
