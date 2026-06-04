@@ -89,15 +89,12 @@ git push origin master
    ```
    DATABASE_URL=postgresql+psycopg://postgres.<ref>:<pass>@aws-1-us-east-1.pooler.supabase.com:5432/postgres
    SUPABASE_URL=https://<ref>.supabase.co
-   SUPABASE_JWKS_URL=https://<ref>.supabase.co/auth/v1/.well-known/jwks.json
-   SUPABASE_JWT_AUDIENCE=authenticated
-   SUPABASE_JWT_ISSUER=https://<ref>.supabase.co/auth/v1
-   SUPABASE_JWT_ALGORITHMS=HS256,RS256,ES256
    SUPABASE_JWT_SECRET=<tu-jwt-secret>
-   SUPABASE_JWT_LEEWAY_SECONDS=60
    PUSH_ENABLED=true
    PYTHON_VERSION=3.11.9
    ```
+
+   El backend deriva solo el JWKS URL (`/auth/v1/.well-known/jwks.json`) y el issuer (`/auth/v1`) a partir de `SUPABASE_URL`, así que **no** necesitas definir `SUPABASE_JWKS_URL` ni `SUPABASE_JWT_ISSUER`. El audience (`authenticated`) y los algoritmos también tienen defaults; solo agrégalos si necesitas sobreescribirlos.
 
    ⚠️ Usa el **puerto 5432** (session pooler) en `DATABASE_URL`.
 
