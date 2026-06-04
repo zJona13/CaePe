@@ -13,18 +13,18 @@
       "distribution": "internal",
       "android": { "buildType": "apk" },
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://REEMPLAZA-con-tu-backend.onrender.com",
-        "EXPO_PUBLIC_SUPABASE_URL": "https://REEMPLAZA.supabase.co",
-        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "REEMPLAZA-con-tu-anon-key"
+        "EXPO_PUBLIC_API_URL": "https://caepe.onrender.com",
+        "EXPO_PUBLIC_SUPABASE_URL": "https://frneamlbfggajoafzijo.supabase.co",
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZybmVhbWxiZmdnYWpvYWZ6aWpvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc2OTk2NjgsImV4cCI6MjA5MzI3NTY2OH0.3t5ZKY2SvvxWytMUmIWYBX9dk6n5l-zrhTuLYDwe83I"
       }
     },
     "production": {
       "autoIncrement": true,
       "android": { "buildType": "app-bundle" },
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://REEMPLAZA-con-tu-backend.onrender.com",
-        "EXPO_PUBLIC_SUPABASE_URL": "https://REEMPLAZA.supabase.co",
-        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "REEMPLAZA-con-tu-anon-key"
+        "EXPO_PUBLIC_API_URL": "https://caepe.onrender.com",
+        "EXPO_PUBLIC_SUPABASE_URL": "https://frneamlbfggajoafzijo.supabase.co",
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZybmVhbWxiZmdnYWpvYWZ6aWpvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc2OTk2NjgsImV4cCI6MjA5MzI3NTY2OH0.3t5ZKY2SvvxWytMUmIWYBX9dk6n5l-zrhTuLYDwe83I"
       }
     }
   },
