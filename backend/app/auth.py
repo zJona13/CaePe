@@ -24,10 +24,10 @@ _JWKS_TTL_SECONDS = 60 * 60
 
 def _get_jwks_client() -> PyJWKClient | None:
     global _jwks_client
-    if not settings.supabase_jwks_url:
+    if not settings.jwks_url:
         return None
     if _jwks_client is None:
-        _jwks_client = PyJWKClient(settings.supabase_jwks_url, cache_keys=True)
+        _jwks_client = PyJWKClient(settings.jwks_url, cache_keys=True)
     return _jwks_client
 
 
@@ -36,7 +36,7 @@ def _decode_options() -> dict[str, Any]:
         "verify_signature": True,
         "verify_exp": True,
         "verify_aud": bool(settings.supabase_jwt_audience),
-        "verify_iss": bool(settings.supabase_jwt_issuer),
+        "verify_iss": bool(settings.jwt_issuer),
     }
 
 
@@ -47,8 +47,8 @@ def _decode_kwargs() -> dict[str, Any]:
     }
     if settings.supabase_jwt_audience:
         kwargs["audience"] = settings.supabase_jwt_audience
-    if settings.supabase_jwt_issuer:
-        kwargs["issuer"] = settings.supabase_jwt_issuer
+    if settings.jwt_issuer:
+        kwargs["issuer"] = settings.jwt_issuer
     return kwargs
 
 

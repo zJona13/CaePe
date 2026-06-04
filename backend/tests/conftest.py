@@ -72,6 +72,8 @@ def hs256_auth(monkeypatch):
     monkeypatch.setattr(settings, "supabase_jwt_algorithms", "HS256", raising=False)
     monkeypatch.setattr(settings, "supabase_jwt_audience", "authenticated", raising=False)
     monkeypatch.setattr(settings, "supabase_jwt_issuer", "", raising=False)
+    # supabase_url vacío → jwt_issuer derivado también queda vacío (sin verificar iss).
+    monkeypatch.setattr(settings, "supabase_url", "", raising=False)
     yield
 
 

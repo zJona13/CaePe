@@ -33,13 +33,15 @@ caepe/
 ```bash
 cd backend
 python -m venv .venv
+uv run python -m venv .venv
 
 # macOS/Linux
 source .venv/bin/activate
 # Windows (Git Bash)
-# source .venv/Scripts/activate
+.venv\Scripts\activate
 
 pip install -r requirements.txt
+uv pip install -r requirements.txt
 ```
 
 Dependencias clave: FastAPI, SQLAlchemy 2, Alembic, PyJWT.
