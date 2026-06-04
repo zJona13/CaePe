@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "2235921965",
+    "project_id": "caepe-bace0",
+    "storage_bucket": "caepe-bace0.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:2235921965:android:b43b9d0d1aab378f3a2aa4",
+        "android_client_info": {
+          "package_name": "com.caepe.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBrXX-AULVC9MtoGwKLdBMz9D4LSAMqQ8Q"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
