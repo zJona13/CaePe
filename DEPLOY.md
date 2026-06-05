@@ -99,17 +99,17 @@ git push origin master
    ⚠️ Usa el **puerto 5432** (session pooler) en `DATABASE_URL`.
 
 4. **Create Web Service** y espera el deploy. Obtendrás una URL tipo
-   `https://caepe-backend.onrender.com`. Anótala — la usarás en el paso 5.
+   `https://caepe.onrender.com`. Anótala — la usarás en el paso 5.
 
 5. **Cargar los 30 planes de Chiclayo** (una sola vez):
    ```bash
-   curl -X POST https://caepe-backend.onrender.com/plans/seed
+   curl -X POST https://caepe.onrender.com/plans/seed
    # {"inserted":30,"total":30}
    ```
 
 6. **Verificar:**
    ```bash
-   curl https://caepe-backend.onrender.com/health
+   curl https://caepe.onrender.com/health
    # {"status":"ok"}
    ```
 
@@ -157,7 +157,7 @@ eas init                            # crea el projectId y lo escribe en app.json
 > `eas init` es **obligatorio**: sin `projectId` la app no puede obtener el ExpoPushToken.
 
 1. Abre `mobile/eas.json` y reemplaza los `REEMPLAZA-...` en el perfil **preview** con:
-   - `EXPO_PUBLIC_API_URL` → la URL de Render del paso 3 (ej. `https://caepe-backend.onrender.com`).
+   - `EXPO_PUBLIC_API_URL` → la URL de Render del paso 3 (ej. `https://caepe.onrender.com`).
    - `EXPO_PUBLIC_SUPABASE_URL` → tu URL de Supabase.
    - `EXPO_PUBLIC_SUPABASE_ANON_KEY` → tu *anon key* (Supabase → Project Settings → API → `anon public`).
 
