@@ -45,11 +45,13 @@ function AuthGuard() {
         segs[0] === 'events' &&
         (segs[2] === undefined || segs[2] === 'funded' || segs[1] === 'join');
       // Expo router for /events/[id]/index resolves to segments = ['events', '<id>'] (index is collapsed)
+      // La pantalla de unirse a grupo es pública: maneja ella misma el caso sin sesión.
+      const isPublicGroupJoin = segs[0] === 'groups' && segs[1] === 'join';
 
       if (!token) {
-        if (!seenOnboarding && !inAuthGroup) {
+        if (!seenOnboarding && !inAuthGroup && !isPublicEvent && !isPublicGroupJoin) {
           router.replace('/(auth)/onboarding');
-        } else if (seenOnboarding && !inAuthGroup && !isPublicEvent) {
+        } else if (seenOnboarding && !inAuthGroup && !isPublicEvent && !isPublicGroupJoin) {
           router.replace('/(auth)/login');
         }
       } else if (inAuthGroup) {

@@ -7,7 +7,7 @@ import { EmptyState } from '../../components/EmptyState';
 import { PrimaryButton } from '../../components/PrimaryButton';
 import { ScreenHeader } from '../../components/ScreenHeader';
 import { StatusBadge } from '../../components/StatusBadge';
-import { useGroup } from '../../lib/queries/groups';
+import { useGroup, useGroupMembers } from '../../lib/queries/groups';
 import { useEventsByGroup } from '../../lib/queries/events';
 import { SLANG } from '../../lib/slang';
 import { colors } from '../../theme/colors';
@@ -20,11 +20,16 @@ export default function GroupDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const group = useGroup(id);
   const events = useEventsByGroup(id);
+  const members = useGroupMembers(id);
 
   const shareWhatsapp = async () => {
     if (!group.data) return;
-    const link = `caepe://groups/join/${group.data.invite_code}`;
-    const msg = `¡Habla! Únete a "${group.data.name}" en CaePe: ${link}`;
+    const code = group.data.invite_code;
+    const link = `caepe://groups/join/${code}`;
+    const msg =
+      `¡Habla! Únete a "${group.data.name}" en CaePe 🎉\n\n` +
+      `📲 Si ya tienes la app, abre: ${link}\n` +
+      `🔑 O entra a CaePe y mete el código: ${code}`;
     try { await Linking.openURL(`whatsapp://send?text=${encodeURIComponent(msg)}`); } catch { /* ignore */ }
   };
 
@@ -63,6 +68,37 @@ export default function GroupDetail() {
           onPress={shareWhatsapp}
           icon={<Share2 size={18} color={colors.onPrimary} strokeWidth={2.5} />}
         />
+
+        <View style={styles.sectionRow}>
+          <Text style={styles.section}>Miembros</Text>
+          {group.data.members_count ? <Text style={styles.sectionCount}>{group.data.members_count}</Text> : null}
+        </View>
+
+        {members.isLoading ? (
+          <ActivityIndicator color={colors.primary} style={{ paddingVertical: spacing.md }} />
+        ) : members.data && members.data.length > 0 ? (
+          <View style={{ gap: spacing.sm }}>
+            {members.data.map((m) => {
+              const displayName = m.name ?? m.email ?? 'Invitado';
+              const roleLabel = m.role === 'owner' ? 'Organizador' : m.role === 'guest' ? 'Sin cuenta' : null;
+              return (
+                <View key={m.id} style={styles.memberRow}>
+                  <View style={styles.memberAvatar}>
+                    <Text style={styles.memberInitial}>{displayName.charAt(0).toUpperCase()}</Text>
+                  </View>
+                  <Text style={styles.memberName} numberOfLines={1}>{displayName}</Text>
+                  {roleLabel ? (
+                    <Text style={[styles.memberRole, m.role === 'owner' ? styles.roleOwner : styles.roleGuest]}>
+                      {roleLabel}
+                    </Text>
+                  ) : null}
+                </View>
+              );
+            })}
+          </View>
+        ) : (
+          <Text style={styles.muted}>Aún nadie en el grupo.</Text>
+        )}
 
         <View style={styles.sectionRow}>
           <Text style={styles.section}>{SLANG.sectionEvents}</Text>
@@ -132,6 +168,16 @@ const styles = StyleSheet.create({
 
   sectionRow: { flexDirection: 'row', alignItems: 'center', marginTop: spacing.md },
   section: { ...typography.h2, color: colors.textPrimary },
+  sectionCount: { ...typography.bodyBold, color: colors.textMuted, marginLeft: spacing.xs },
+
+  memberRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, backgroundColor: colors.surface, padding: spacing.md, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, ...shadows.card },
+  memberAvatar: { width: 40, height: 40, borderRadius: radius.full, backgroundColor: colors.primarySoft, alignItems: 'center', justifyContent: 'center' },
+  memberInitial: { ...typography.bodyBold, color: colors.primary },
+  memberName: { ...typography.bodyBold, color: colors.textPrimary, flex: 1 },
+  memberRole: { ...typography.caption, fontWeight: '700' },
+  roleOwner: { color: colors.primary },
+  roleGuest: { color: colors.textMuted },
+  muted: { ...typography.body, color: colors.textMuted },
 
   eventRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, backgroundColor: colors.surface, padding: spacing.md, borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, ...shadows.card },
   eventIcon: { width: 44, height: 44, borderRadius: radius.full, backgroundColor: colors.primarySoft, alignItems: 'center', justifyContent: 'center' },
