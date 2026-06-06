@@ -22,9 +22,14 @@ function getProjectId(): string | undefined {
   return fromExpo ?? fromEas;
 }
 
+const delay = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
+
 /** Pide permisos y devuelve el ExpoPushToken, o null si no se puede (Expo Go / emulador / sin permiso). */
 export async function registerForPushNotificationsAsync(): Promise<string | null> {
-  if (!Device.isDevice) return null;
+  if (!Device.isDevice) {
+    console.log('[push] omitido: no es dispositivo fisico');
+    return null;
+  }
 
   if (Platform.OS === 'android') {
     await Notifications.setNotificationChannelAsync('default', {
@@ -41,31 +46,46 @@ export async function registerForPushNotificationsAsync(): Promise<string | null
     const { status } = await Notifications.requestPermissionsAsync();
     finalStatus = status;
   }
-  if (finalStatus !== 'granted') return null;
-
-  try {
-    const projectId = getProjectId();
-    const tokenData = await Notifications.getExpoPushTokenAsync(
-      projectId ? { projectId } : undefined,
-    );
-    return tokenData.data;
-  } catch {
-    // En Expo Go (SDK 53+) o sin projectId no se puede obtener token remoto.
+  if (finalStatus !== 'granted') {
+    console.log('[push] permiso no concedido:', finalStatus);
     return null;
   }
+
+  const projectId = getProjectId();
+  if (!projectId) {
+    console.log('[push] sin projectId (extra.eas.projectId) — token remoto no disponible');
+  }
+  // Tras conceder permiso por primera vez, FCM/APNs puede no estar listo y el primer
+  // getExpoPushTokenAsync falla. Reintentar evita perder el token en cuentas nuevas.
+  for (let attempt = 1; attempt <= 3; attempt += 1) {
+    try {
+      const tokenData = await Notifications.getExpoPushTokenAsync(
+        projectId ? { projectId } : undefined,
+      );
+      return tokenData.data;
+    } catch (e) {
+      console.log(`[push] getExpoPushTokenAsync intento ${attempt}/3 fallo:`, e);
+      if (attempt < 3) await delay(1500);
+    }
+  }
+  return null;
 }
 
 /** Registra el token del dispositivo en el backend. Best-effort: nunca lanza. */
 export async function syncPushToken(): Promise<void> {
   try {
     const token = await registerForPushNotificationsAsync();
-    if (!token) return;
+    if (!token) {
+      console.log('[push] sin token; no se registra en backend');
+      return;
+    }
     await apiRequest('/notifications/register-token', {
       method: 'POST',
       body: { token, platform: Platform.OS },
     });
-  } catch {
-    // sin push no pasa nada
+    console.log('[push] token registrado en backend OK');
+  } catch (e) {
+    console.log('[push] error registrando token:', e);
   }
 }
 

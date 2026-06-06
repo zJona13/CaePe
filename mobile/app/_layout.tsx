@@ -7,6 +7,7 @@ import {
 } from 'expo-router';
 import { useEffect } from 'react';
 import { QueryClientProvider } from '@tanstack/react-query';
+import { AppState } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import * as Notifications from 'expo-notifications';
@@ -74,8 +75,16 @@ function AuthGuard() {
 function PushRegistration() {
   const token = useSession((s) => s.token);
 
+  // Registra el token al aparecer la sesion y cada vez que la app vuelve a primer
+  // plano: si el primer intento fallo (permiso recien dado, FCM no listo) se
+  // recupera sin necesidad de reiniciar la app.
   useEffect(() => {
-    if (token) syncPushToken();
+    if (!token) return;
+    syncPushToken();
+    const sub = AppState.addEventListener('change', (state) => {
+      if (state === 'active') syncPushToken();
+    });
+    return () => sub.remove();
   }, [token]);
 
   useEffect(() => {
