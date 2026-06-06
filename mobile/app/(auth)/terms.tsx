@@ -53,15 +53,18 @@ export default function Terms() {
         <Text style={styles.disclaimer}>
           Este texto es referencial y no constituye asesoría legal. Será reemplazado por la versión legal definitiva.
         </Text>
-        <PrimaryButton size="lg" label="Entendido" onPress={() => router.back()} />
       </ScrollView>
+      <View style={styles.footer}>
+        <PrimaryButton size="lg" label="Entendido" onPress={() => router.back()} />
+      </View>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
-  scroll: { padding: spacing.lg, gap: spacing.md, paddingBottom: spacing.xxxl },
+  scroll: { padding: spacing.lg, gap: spacing.md },
+  footer: { paddingHorizontal: spacing.lg, paddingTop: spacing.sm, paddingBottom: spacing.lg },
   intro: { ...typography.body, color: colors.textSecondary },
   section: { gap: spacing.xs },
   sectionTitle: { ...typography.bodyBold, color: colors.textPrimary },
