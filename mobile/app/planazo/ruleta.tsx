@@ -5,6 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Beer, Drumstick, Mountain, Music, Palette, Sparkles, Trophy, Users } from 'lucide-react-native';
 import { Input } from '../../components/Input';
 import { PlanCard } from '../../components/PlanCard';
+import { KeyboardScreen } from '../../components/KeyboardScreen';
 import { PrimaryButton } from '../../components/PrimaryButton';
 import { ScreenHeader } from '../../components/ScreenHeader';
 import { fetchRandomPlan, type Plan, type PlanCategory } from '../../lib/queries/plans';
@@ -73,8 +74,9 @@ export default function Ruleta() {
   const revealScale = reveal.interpolate({ inputRange: [0, 1], outputRange: [0.92, 1] });
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       <ScreenHeader title="Planazo" subtitle="Tira la ruleta y arma tu plan" />
+      <KeyboardScreen>
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
 
         <Text style={styles.label}>Categoría</Text>
@@ -152,6 +154,7 @@ export default function Ruleta() {
 
         <View style={{ height: spacing.xxl }} />
       </ScrollView>
+      </KeyboardScreen>
     </SafeAreaView>
   );
 }

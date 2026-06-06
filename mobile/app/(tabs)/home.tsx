@@ -1,7 +1,7 @@
 import { router } from 'expo-router';
 import { useState, type ReactNode } from 'react';
-import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { ActivityIndicator, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Bell, Calendar, Clock, Compass, MapPin, Plus, Sparkles, Users } from 'lucide-react-native';
 import { EmptyState } from '../../components/EmptyState';
 import { Input } from '../../components/Input';
@@ -39,6 +39,7 @@ function formatTime(time: string | null): string | null {
 }
 
 export default function Home() {
+  const insets = useSafeAreaInsets();
   const user = useSession((s) => s.user);
   const groups = useGroups();
   const events = useEvents();
@@ -158,7 +159,7 @@ export default function Home() {
 
       <Modal transparent visible={menuOpen} animationType="fade" onRequestClose={close}>
         <Pressable style={styles.overlay} onPress={close}>
-          <Pressable style={styles.menu} onPress={() => undefined}>
+          <Pressable style={[styles.menu, { paddingBottom: insets.bottom + spacing.xxl }]} onPress={() => undefined}>
             <View style={styles.menuHandle} />
             <Text style={styles.menuTitle}>¿Qué armamos?</Text>
             <PrimaryButton label="Tira la ruleta" onPress={goRoulette} icon={<Sparkles size={18} color={colors.onPrimary} strokeWidth={2.6} />} />
@@ -173,8 +174,9 @@ export default function Home() {
       </Modal>
 
       <Modal transparent visible={joinOpen} animationType="fade" onRequestClose={closeJoin}>
+        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
         <Pressable style={styles.overlay} onPress={closeJoin}>
-          <Pressable style={styles.menu} onPress={() => undefined}>
+          <Pressable style={[styles.menu, { paddingBottom: insets.bottom + spacing.xxl }]} onPress={() => undefined}>
             <View style={styles.menuHandle} />
             <Text style={styles.menuTitle}>Unirme a un grupo</Text>
             <Input
@@ -193,6 +195,7 @@ export default function Home() {
             </Pressable>
           </Pressable>
         </Pressable>
+        </KeyboardAvoidingView>
       </Modal>
     </SafeAreaView>
   );

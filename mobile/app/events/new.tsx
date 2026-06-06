@@ -131,7 +131,7 @@ export default function NewEvent() {
   });
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       <ScreenHeader title={SLANG.ctaCreateEvent} subtitle="Llena lo básico, calculamos el monto al toque" />
       <KeyboardScreen>
       <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>

@@ -4,6 +4,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Check, ChevronRight, LogOut, Settings, User } from 'lucide-react-native';
 import { Input } from '../../components/Input';
+import { KeyboardScreen } from '../../components/KeyboardScreen';
 import { PrimaryButton } from '../../components/PrimaryButton';
 import { supabase } from '../../lib/supabase';
 import { unregisterPushToken } from '../../lib/notifications';
@@ -54,7 +55,8 @@ export default function Profile() {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      <ScrollView contentContainerStyle={styles.body} showsVerticalScrollIndicator={false}>
+      <KeyboardScreen>
+      <ScrollView contentContainerStyle={styles.body} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
         <Text style={styles.screenTitle}>Mi Perfil</Text>
 
         <View style={styles.identity}>
@@ -143,6 +145,7 @@ export default function Profile() {
         />
         <View style={{ height: spacing.xxl }} />
       </ScrollView>
+      </KeyboardScreen>
     </SafeAreaView>
   );
 }

@@ -89,7 +89,7 @@ export default function EventDetail() {
   const copyNumber = async () => { if (payNumber) await Clipboard.setStringAsync(payNumber); };
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       <ScreenHeader />
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         <View style={styles.titleRow}>

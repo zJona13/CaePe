@@ -37,7 +37,7 @@ export default function NewGroup() {
 
   if (created) {
     return (
-      <SafeAreaView style={styles.container} edges={['top']}>
+      <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
         <ScreenHeader />
         <View style={styles.body}>
           <View style={styles.successIconWrap}>
@@ -63,7 +63,7 @@ export default function NewGroup() {
   }
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       <ScreenHeader title="Nuevo grupo" subtitle="Junta a tu mancha en un toque" />
       <KeyboardScreen>
       <ScrollView contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled">

@@ -69,7 +69,7 @@ export default function Payments() {
   const progress = totalCount > 0 ? paidCount / totalCount : 0;
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       <ScreenHeader title={SLANG.ctaMarkPayments} subtitle={e.name} />
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         <View style={styles.progressCard}>

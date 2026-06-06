@@ -36,7 +36,7 @@ export default function GroupDetail() {
   if (!group.data) return <SafeAreaView style={styles.center}><Text style={styles.err}>{SLANG.errorGeneric}</Text></SafeAreaView>;
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       <ScreenHeader />
       <ScrollView contentContainerStyle={styles.scroll}>
         <View style={styles.heroBlock}>

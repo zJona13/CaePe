@@ -39,7 +39,7 @@ export default function ShareScreen() {
   }
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       <ScreenHeader title={SLANG.ctaShare} subtitle="Pasa la voz por WhatsApp" />
       <View style={styles.body}>
         <View style={styles.iconWrap}>

@@ -4,6 +4,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ArrowLeft, Mail, Phone, User } from 'lucide-react-native';
 import { Input } from '../../components/Input';
+import { KeyboardScreen } from '../../components/KeyboardScreen';
 import { PrimaryButton } from '../../components/PrimaryButton';
 import { updateMe } from '../../lib/queries/auth';
 import { useSession } from '../../lib/store';
@@ -40,7 +41,7 @@ export default function PersonalInfo() {
   };
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
+    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
       <View style={styles.header}>
         <Pressable onPress={() => router.back()} hitSlop={8} style={styles.backBtn}>
           <ArrowLeft size={22} color={colors.textPrimary} strokeWidth={2.2} />
@@ -49,6 +50,7 @@ export default function PersonalInfo() {
         <View style={styles.backBtn} />
       </View>
 
+      <KeyboardScreen>
       <ScrollView contentContainerStyle={styles.body} keyboardShouldPersistTaps="handled">
         <Input
           label="Nombre completo"
@@ -83,6 +85,7 @@ export default function PersonalInfo() {
           <PrimaryButton size="lg" label={SLANG.ctaSave} onPress={onSave} loading={saving} />
         </View>
       </ScrollView>
+      </KeyboardScreen>
     </SafeAreaView>
   );
 }
