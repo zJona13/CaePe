@@ -3,7 +3,7 @@ import { Controller, useForm } from 'react-hook-form';
 import { useState } from 'react';
 import { Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { CreditCard, Eye, EyeOff, Lock, Mail, Phone, User } from 'lucide-react-native';
+import { Check, CreditCard, Eye, EyeOff, Lock, Mail, Phone, User } from 'lucide-react-native';
 import { Input } from '../../components/Input';
 import { KeyboardScreen } from '../../components/KeyboardScreen';
 import { PrimaryButton } from '../../components/PrimaryButton';
@@ -41,6 +41,7 @@ export default function Register() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [accepted, setAccepted] = useState(false);
   const setSession = useSession((s) => s.setSession);
 
   const onSubmit = handleSubmit(async (values) => {
@@ -160,9 +161,28 @@ export default function Register() {
               )}
             />
 
+            <View style={styles.termsRow}>
+              <Pressable
+                onPress={() => setAccepted((a) => !a)}
+                hitSlop={12}
+                accessibilityRole="checkbox"
+                accessibilityState={{ checked: accepted }}
+                accessibilityLabel="Acepto los Términos y Condiciones"
+                style={[styles.checkbox, accepted && styles.checkboxChecked]}
+              >
+                {accepted ? <Check size={16} color={colors.onPrimary} strokeWidth={3} /> : null}
+              </Pressable>
+              <Text style={styles.termsText}>
+                Acepto los{' '}
+                <Text style={styles.termsLink} onPress={() => router.push('/(auth)/terms')}>
+                  Términos y Condiciones
+                </Text>
+              </Text>
+            </View>
+
             {error ? <Text style={styles.err}>{error}</Text> : null}
 
-            <PrimaryButton size="lg" label="Crear cuenta" onPress={onSubmit} loading={loading} />
+            <PrimaryButton size="lg" label="Crear cuenta" onPress={onSubmit} loading={loading} disabled={!accepted} />
           </View>
 
           <View style={styles.divider} />
@@ -256,6 +276,20 @@ const styles = StyleSheet.create({
   pmRadioSelected: { borderColor: colors.primary },
   pmRadioDot: { width: 12, height: 12, borderRadius: radius.full, backgroundColor: colors.primary },
   err: { ...typography.caption, color: colors.error, textAlign: 'center' },
+  termsRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, alignSelf: 'stretch' },
+  checkbox: {
+    width: 24,
+    height: 24,
+    borderRadius: radius.sm,
+    borderWidth: 2,
+    borderColor: colors.borderStrong,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.surface,
+  },
+  checkboxChecked: { backgroundColor: colors.primary, borderColor: colors.primary },
+  termsText: { ...typography.body, color: colors.textSecondary, flex: 1 },
+  termsLink: { ...typography.bodyBold, color: colors.primaryDark },
   divider: { height: 1, backgroundColor: colors.border, alignSelf: 'stretch', marginVertical: spacing.sm },
   footerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center' },
   footerText: { ...typography.body, color: colors.textSecondary },
