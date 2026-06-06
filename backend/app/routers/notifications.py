@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import uuid
 
 from fastapi import APIRouter, HTTPException, status
@@ -9,6 +10,8 @@ from app.deps import CurrentUser, DBSession
 from app.models import DeviceToken, Event
 from app.schemas import DeviceTokenRead, DeviceTokenRegister, ReminderResult
 from app.services.notifications_service import notify_payment_reminder
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/notifications", tags=["notifications"])
 
@@ -30,6 +33,7 @@ def register_token(
         existing.platform = payload.platform
         db.commit()
         db.refresh(existing)
+        logger.info("device token reasignado a user %s (%s)", current.id, payload.platform)
         return existing
     token = DeviceToken(
         user_id=current.id,
@@ -39,6 +43,7 @@ def register_token(
     db.add(token)
     db.commit()
     db.refresh(token)
+    logger.info("device token nuevo para user %s (%s)", current.id, payload.platform)
     return token
 
 

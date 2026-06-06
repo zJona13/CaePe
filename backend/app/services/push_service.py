@@ -43,7 +43,27 @@ def send_expo_push(messages: list[dict[str, Any]]) -> None:
                 batch = messages[i : i + _CHUNK]
                 resp = client.post(settings.expo_push_url, json=batch, headers=headers)
                 if resp.status_code >= 400:
-                    logger.warning("Expo push fallo (%s): %s", resp.status_code, resp.text[:500])
+                    logger.warning("Expo push fallo HTTP %s: %s", resp.status_code, resp.text[:500])
+                    continue
+                # Expo responde 200 aun cuando un mensaje falla: el error viene en
+                # cada ticket (status='error': DeviceNotRegistered, MismatchSenderId,
+                # InvalidCredentials...). Hay que inspeccionar el body, no solo el HTTP.
+                try:
+                    tickets = resp.json().get("data", [])
+                except Exception:  # noqa: BLE001
+                    tickets = []
+                errors = [t for t in tickets if isinstance(t, dict) and t.get("status") == "error"]
+                if errors:
+                    detail = "; ".join(
+                        f"{t.get('message')} [{(t.get('details') or {}).get('error')}]"
+                        for t in errors
+                    )
+                    logger.warning(
+                        "Expo push: %d ok, %d con error -> %s",
+                        len(tickets) - len(errors), len(errors), detail,
+                    )
+                else:
+                    logger.info("Expo push: %d enviados ok", len(tickets))
     except Exception as exc:  # noqa: BLE001 — push nunca debe tumbar el request
         logger.warning("No se pudo enviar push a Expo: %s", exc)
 
@@ -56,9 +76,17 @@ def notify_users(
     data: dict[str, Any] | None = None,
 ) -> None:
     """Envía una push a todos los dispositivos registrados de esos usuarios."""
-    tokens = _tokens_for_users(db, user_ids)
+    ids = {uid for uid in user_ids if uid is not None}
+    tokens = _tokens_for_users(db, ids)
     if not tokens:
+        if ids:
+            logger.warning(
+                "push '%s': %d usuario(s) objetivo pero 0 tokens registrados "
+                "(¿no dieron permiso de notificaciones / no abrieron la app tras instalar?)",
+                title, len(ids),
+            )
         return
+    logger.info("push '%s': %d usuario(s) objetivo, %d token(s)", title, len(ids), len(tokens))
     messages = [
         {
             "to": token,
