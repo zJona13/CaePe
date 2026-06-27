@@ -4,7 +4,7 @@ import { Controller, useForm, useWatch, type Control } from 'react-hook-form';
 import { ActivityIndicator, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import DateTimePicker from '@react-native-community/datetimepicker';
-import { Calendar, Check, Clock, MapPin, Users, Wallet } from 'lucide-react-native';
+import { Calendar, Check, Clock, Crown, MapPin, Users, Wallet } from 'lucide-react-native';
 import { Input } from '../../components/Input';
 import { KeyboardScreen } from '../../components/KeyboardScreen';
 import { PlanCard } from '../../components/PlanCard';
@@ -12,7 +12,9 @@ import { PrimaryButton } from '../../components/PrimaryButton';
 import { ScreenHeader } from '../../components/ScreenHeader';
 import { useGroups, useGroupMembers, type GroupMember } from '../../lib/queries/groups';
 import { useCreateEvent, type CreateEventBody } from '../../lib/queries/events';
+import { useBillingMe } from '../../lib/queries/billing';
 import { usePlans } from '../../lib/queries/plans';
+import { ApiError } from '../../lib/api';
 import { useSession } from '../../lib/store';
 import { SLANG } from '../../lib/slang';
 import { colors } from '../../theme/colors';
@@ -62,6 +64,7 @@ export default function NewEvent() {
   const groups = useGroups();
   const plans = usePlans();
   const createEvent = useCreateEvent();
+  const billing = useBillingMe();
 
   const selectedPlan = useMemo(
     () => plans.data?.find((p) => p.id === params.planId),
@@ -126,6 +129,12 @@ export default function NewEvent() {
       const created = await createEvent.mutateAsync(body);
       router.replace({ pathname: '/events/[id]/summary', params: { id: created.id } });
     } catch (e) {
+      // 402 = topó el límite del plan free → al paywall en vez de error genérico.
+      if (e instanceof ApiError && e.status === 402) {
+        billing.refetch();
+        router.push('/paywall');
+        return;
+      }
       setSubmitErr((e as Error).message);
     }
   });
@@ -136,6 +145,20 @@ export default function NewEvent() {
       <KeyboardScreen>
       <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
         {selectedPlan ? <PlanCard plan={selectedPlan} /> : null}
+
+        {billing.data && !billing.data.is_premium ? (
+          <Pressable
+            onPress={() => router.push('/paywall')}
+            style={({ pressed }) => [styles.planPill, pressed && { opacity: 0.85 }]}
+          >
+            <Crown size={16} color={colors.primaryDark} strokeWidth={2.4} />
+            <Text style={styles.planPillText}>
+              {billing.data.events_remaining === 0
+                ? 'Llegaste al límite del plan gratis · Toca para ampliar'
+                : `Te quedan ${billing.data.events_remaining} eventos en tu plan gratis`}
+            </Text>
+          </Pressable>
+        ) : null}
 
         <Controller control={control} name="name" rules={{ required: 'Nombre requerido' }}
           render={({ field: { value, onChange } }) => (
@@ -297,4 +320,12 @@ const styles = StyleSheet.create({
   empty: { ...typography.caption, color: colors.textSecondary, fontStyle: 'italic', padding: spacing.md, textAlign: 'center' },
 
   err: { ...typography.caption, color: colors.error, textAlign: 'center' },
+
+  planPill: {
+    flexDirection: 'row', alignItems: 'center', gap: spacing.sm,
+    backgroundColor: colors.primarySoft, borderRadius: radius.md,
+    paddingHorizontal: spacing.md, paddingVertical: 10,
+    borderWidth: 1, borderColor: colors.primaryMuted,
+  },
+  planPillText: { ...typography.captionBold, color: colors.primaryDark, flex: 1 },
 });

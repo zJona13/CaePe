@@ -2,12 +2,13 @@ import { router } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Check, ChevronRight, LogOut, Settings, User } from 'lucide-react-native';
+import { Check, ChevronRight, Crown, LogOut, Settings, User } from 'lucide-react-native';
 import { Input } from '../../components/Input';
 import { KeyboardScreen } from '../../components/KeyboardScreen';
 import { PrimaryButton } from '../../components/PrimaryButton';
 import { supabase } from '../../lib/supabase';
 import { unregisterPushToken } from '../../lib/notifications';
+import { useBillingMe } from '../../lib/queries/billing';
 import { useSession } from '../../lib/store';
 import { SLANG } from '../../lib/slang';
 import { colors } from '../../theme/colors';
@@ -21,6 +22,7 @@ export default function Profile() {
   const setSession = useSession((s) => s.setSession);
   const clearSession = useSession((s) => s.clearSession);
   const token = useSession((s) => s.token);
+  const billing = useBillingMe();
 
   const [editing, setEditing] = useState(false);
   const [method, setMethod] = useState<'yape' | 'plin'>(user?.payment_method ?? 'yape');
@@ -75,6 +77,26 @@ export default function Profile() {
             <User size={18} color={colors.textSecondary} strokeWidth={2.2} />
           </View>
           <Text style={styles.rowText}>Información personal</Text>
+          <ChevronRight size={18} color={colors.textMuted} strokeWidth={2.2} />
+        </Pressable>
+
+        <Text style={styles.section}>Plan</Text>
+        <Pressable
+          onPress={() => router.push('/paywall')}
+          style={({ pressed }) => [styles.row, pressed && { opacity: 0.9 }]}
+        >
+          <View style={styles.rowIcon}>
+            <Crown size={18} color={colors.primary} strokeWidth={2.2} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.rowText}>{billing.data?.is_premium ? 'Premium' : 'Plan Gratis'}</Text>
+            {billing.data && !billing.data.is_premium ? (
+              <Text style={styles.rowSub}>
+                {billing.data.events_created}/{billing.data.free_event_limit} eventos
+                {billing.data.event_credits > 0 ? ` · ${billing.data.event_credits} créditos` : ''}
+              </Text>
+            ) : null}
+          </View>
           <ChevronRight size={18} color={colors.textMuted} strokeWidth={2.2} />
         </Pressable>
 
@@ -180,6 +202,7 @@ const styles = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
   },
   rowText: { ...typography.bodyMedium, color: colors.textPrimary, flex: 1 },
+  rowSub: { ...typography.caption, color: colors.textSecondary, marginTop: 2 },
 
   card: {
     backgroundColor: colors.surface,

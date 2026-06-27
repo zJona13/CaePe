@@ -84,7 +84,10 @@ export function useCreateEvent() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (body: CreateEventBody) => apiRequest<EventDetail>('/events', { method: 'POST', body }),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['events'] }); },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['events'] });
+      qc.invalidateQueries({ queryKey: ['billing'] });
+    },
   });
 }
 
