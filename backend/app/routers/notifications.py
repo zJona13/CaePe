@@ -5,6 +5,7 @@ import uuid
 
 from fastapi import APIRouter, HTTPException, status
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 
 from app.deps import CurrentUser, DBSession
 from app.models import DeviceToken, Event
@@ -24,24 +25,46 @@ router = APIRouter(prefix="/notifications", tags=["notifications"])
 def register_token(
     payload: DeviceTokenRegister, current: CurrentUser, db: DBSession
 ) -> DeviceToken:
-    """Guarda (o reasigna) el ExpoPushToken del dispositivo para el usuario actual."""
-    existing = db.execute(
-        select(DeviceToken).where(DeviceToken.token == payload.token)
-    ).scalar_one_or_none()
-    if existing is not None:
-        existing.user_id = current.id
-        existing.platform = payload.platform
+    """Guarda (o reasigna) el ExpoPushToken del dispositivo para el usuario actual.
+
+    Idempotente y a prueba de carreras: el mobile reenvía el mismo token varias
+    veces (al montar y al volver a foreground). Si otra petición concurrente ya lo
+    insertó, capturamos el conflicto de unicidad y reasignamos en vez de fallar.
+    """
+
+    def _reassign() -> DeviceToken | None:
+        row = db.execute(
+            select(DeviceToken).where(DeviceToken.token == payload.token)
+        ).scalar_one_or_none()
+        if row is None:
+            return None
+        row.user_id = current.id
+        row.platform = payload.platform
         db.commit()
-        db.refresh(existing)
+        db.refresh(row)
+        return row
+
+    existing = _reassign()
+    if existing is not None:
         logger.info("device token reasignado a user %s (%s)", current.id, payload.platform)
         return existing
+
     token = DeviceToken(
         user_id=current.id,
         token=payload.token,
         platform=payload.platform,
     )
     db.add(token)
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError:
+        # Otra petición concurrente lo insertó primero: reasigna en vez de fallar.
+        db.rollback()
+        reassigned = _reassign()
+        if reassigned is not None:
+            logger.info("device token (carrera) reasignado a user %s", current.id)
+            return reassigned
+        raise
     db.refresh(token)
     logger.info("device token nuevo para user %s (%s)", current.id, payload.platform)
     return token
