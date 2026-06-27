@@ -20,11 +20,17 @@ branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
 
-user_plan = postgresql.ENUM("free", "premium", name="user_plan")
-billing_kind = postgresql.ENUM("credits", "premium", name="billing_kind")
-billing_status = postgresql.ENUM("pending", "approved", "rejected", "refunded", name="billing_status")
-referral_status = postgresql.ENUM("pending", "qualified", "rewarded", name="referral_status")
-banner_audience = postgresql.ENUM("all", "free_only", name="banner_audience")
+# create_type=False: los tipos se crean explícitamente en upgrade() con checkfirst=True,
+# para que add_column/create_table NO vuelvan a emitir CREATE TYPE (evita "type already exists").
+user_plan = postgresql.ENUM("free", "premium", name="user_plan", create_type=False)
+billing_kind = postgresql.ENUM("credits", "premium", name="billing_kind", create_type=False)
+billing_status = postgresql.ENUM(
+    "pending", "approved", "rejected", "refunded", name="billing_status", create_type=False
+)
+referral_status = postgresql.ENUM(
+    "pending", "qualified", "rewarded", name="referral_status", create_type=False
+)
+banner_audience = postgresql.ENUM("all", "free_only", name="banner_audience", create_type=False)
 
 
 def upgrade() -> None:
