@@ -167,6 +167,30 @@ def list_events(current: CurrentUser, db: DBSession) -> list[Event]:
     return list(db.execute(stmt).scalars().unique().all())
 
 
+@router.get("/by-invite/{invite_code}", response_model=EventDetailRead)
+def get_event_by_invite(
+    invite_code: str, db: DBSession, current: OptionalUser
+) -> EventDetailRead:
+    """Public read of an event resolved from its invitation code (for the web invite page)."""
+    invitation = db.execute(
+        select(Invitation).where(
+            Invitation.invite_code == invite_code,
+            Invitation.event_id.is_not(None),
+        )
+    ).scalar_one_or_none()
+    if invitation is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Invitation not found")
+    event = db.get(Event, invitation.event_id)
+    if event is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Event not found")
+    organizer = db.get(User, event.organizer_id)
+    detail = EventDetailRead.model_validate(event)
+    if organizer is not None:
+        detail.organizer_payment_method = organizer.payment_method
+        detail.organizer_payment_number = organizer.payment_number
+    return _scrub_proofs(detail, event, current.id if current else None)
+
+
 @router.get("/{event_id}", response_model=EventDetailRead)
 def get_event(event_id: uuid.UUID, db: DBSession, current: OptionalUser) -> EventDetailRead:
     event = db.get(Event, event_id)

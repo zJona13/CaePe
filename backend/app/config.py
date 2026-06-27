@@ -12,6 +12,10 @@ class Settings(BaseSettings):
     # pública del evento, para que funcione aunque el invitado no tenga la app.
     public_web_url: str = "https://caepe.lat"
 
+    # Orígenes permitidos por CORS (la página de invitación en caepe.lat llama al backend).
+    # Coma-separado; "*" permite cualquiera.
+    cors_origins: str = "https://caepe.lat,https://www.caepe.lat,http://localhost:3000,http://localhost:5173"
+
     # Solo necesitas SUPABASE_URL y SUPABASE_JWT_SECRET en el .env.
     # El JWKS URL y el issuer se derivan de SUPABASE_URL (ver propiedades abajo).
     supabase_url: str = ""
@@ -30,6 +34,10 @@ class Settings(BaseSettings):
     push_enabled: bool = True
     expo_push_url: str = "https://exp.host/--/api/v2/push/send"
     expo_access_token: str = ""
+
+    @property
+    def cors_origins_list(self) -> list[str]:
+        return [o.strip() for o in self.cors_origins.split(",") if o.strip()]
 
     @property
     def jwt_algorithms_list(self) -> list[str]:

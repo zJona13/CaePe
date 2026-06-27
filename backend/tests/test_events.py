@@ -179,6 +179,42 @@ def test_share_message_returns_text_with_invite_code(client, make_user):
     assert "40.00" in body["message"]  # 80/2
     assert isinstance(body["invite_code"], str) and len(body["invite_code"]) == 8
     assert body["invite_code"] in body["message"]
+    # El link debe ser una URL web real (no un esquema caepe://).
+    assert f"https://caepe.lat/events/join/{body['invite_code']}" in body["message"]
+
+
+def test_get_event_by_invite_is_public(client, make_user):
+    organizer = make_user(email="org@example.com")
+    group = _create_group(client, organizer["headers"])
+    event = client.post(
+        "/events",
+        json={
+            "group_id": group["id"],
+            "name": "Pollada",
+            "date": "2026-07-01",
+            "location": "Casa de Mia",
+            "total_budget": "60.00",
+            "participants": [{"name": "A"}, {"name": "B"}, {"name": "C"}],
+        },
+        headers=organizer["headers"],
+    ).json()
+    share = client.post(
+        f"/events/{event['id']}/share-message", headers=organizer["headers"]
+    ).json()
+    code = share["invite_code"]
+
+    # Sin headers de auth: la lectura por código debe ser pública.
+    r = client.get(f"/events/by-invite/{code}")
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["id"] == event["id"]
+    assert body["name"] == "Pollada"
+    assert Decimal(body["amount_per_person"]) == Decimal("20.00")  # 60/3
+
+
+def test_get_event_by_invite_unknown_code_returns_404(client):
+    r = client.get("/events/by-invite/NOPECODE")
+    assert r.status_code == 404, r.text
 
 
 def test_payment_status_summary(client, make_user):
