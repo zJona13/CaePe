@@ -3,15 +3,21 @@
 > Estado al 2026-06-26. Etapas 1–2 (esquema + límite del plan free) y el paywall mobile ya están hechos y desplegados/commiteados. Esto lista lo que falta para arrancar las etapas 3–5 (pagos reales).
 
 ## ✅ CERRADO EN CÓDIGO (2026-06-27)
-Etapas 3–6 + mobile + landing implementadas y testeadas (backend 64 tests verdes; mobile `tsc` limpio).
-- **Etapa 3 — Créditos:** `services/mercadopago_service.py` (preferencia + firma webhook), `services/billing_service.py` (catálogo + grant idempotente), `billing_catalog.py` (packs `10=S/8`, `25=S/15`), `POST /billing/credits/checkout`, `POST /billing/webhook`. Tests en `test_billing.py`.
-- **Etapa 4 — Premium:** `POST /billing/premium/checkout` (`S/9.90`/mes), webhook acumula `premium_until += 30 días`.
+Etapas 3–6 + mobile + landing implementadas y testeadas (backend 67 tests verdes; mobile `tsc` limpio).
+
+> **Pasarela: se cambió de Mercado Pago a Culqi** (decisión del usuario, 2026-06-27). El sandbox de MP daba demasiada fricción de prueba. Culqi cobra de forma **síncrona** (token → cargo) y confirma al instante, con webhook de respaldo.
+
+- **Etapa 3 — Créditos:** `services/culqi_service.py` (cargo vía API con httpx + firma webhook), `services/billing_service.py` (grant idempotente), `billing_catalog.py` (packs `10=S/8`, `25=S/15`). Flujo: `POST /billing/credits/checkout` → URL de página de pago; `GET /billing/payment/{id}/public`; `POST /billing/culqi/charge` (cobra y otorga); `POST /billing/culqi/webhook` (respaldo). Tests en `test_billing.py`.
+- **Etapa 4 — Premium:** `POST /billing/premium/checkout` (`S/9.90`/mes), el cargo acumula `premium_until += 30 días`.
 - **Etapa 5 — Referidos:** `services/referrals_service.py` (código al registrar, registro con `referral_code`+`device_hash`, calificación anti-abuso en `check_and_mark_funded`), `GET /referrals/me`. Tests en `test_referrals.py`.
 - **Etapa 6 — Banner:** `GET /banners` (audiencia/vigencia, oculto a premium). Tests en `test_banners.py`.
-- **Mobile:** `expo-web-browser`, paywall conectado al `init_point`, retorno + refetch (`lib/checkout.ts`), pantalla `app/referrals.tsx`, `components/AdBanner.tsx` en Home, campo de código de referido en el registro (`lib/device.ts`).
-- **Landing:** `billing-return.html` + `r.html` + rewrites en `vercel.json`.
+- **Mobile:** `expo-web-browser`, paywall abre la página de pago (`init_point`), retorno + refetch (`lib/checkout.ts`), pantalla `app/referrals.tsx`, `components/AdBanner.tsx` en Home, campo de código de referido en el registro (`lib/device.ts`).
+- **Landing:** `pay.html` (Culqi Checkout V4), `billing-return.html`, `r.html` + rewrites en `vercel.json`.
 
-**Falta solo lo operativo (del usuario):** cargar credenciales MP reales en `.env`/Render, registrar el webhook en el panel MP, swap a credenciales de producción y rebuild del APK. Detalle abajo.
+**Falta solo lo operativo (del usuario):**
+1. Crear cuenta Culqi y cargar credenciales en Render: `CULQI_PUBLIC_KEY=pk_test_...`, `CULQI_SECRET_KEY=sk_test_...` (prueba) → luego `pk_live_/sk_live_` (producción).
+2. (Opcional) configurar webhook Culqi `order.status.changed`/`charge` → `https://caepe.onrender.com/billing/culqi/webhook` y poner `CULQI_WEBHOOK_SECRET` si Culqi lo provee.
+3. Probar con tarjetas de prueba Culqi, luego swap a `pk_live_/sk_live_` y rebuild del APK.
 
 ---
 

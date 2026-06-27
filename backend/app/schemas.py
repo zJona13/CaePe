@@ -86,10 +86,33 @@ class CreditCheckoutRequest(BaseModel):
 
 
 class CheckoutResponse(BaseModel):
-    """Resultado de crear un checkout: URL de pago de Mercado Pago."""
+    """Resultado de crear un checkout: URL de la página de pago (Culqi)."""
     billing_payment_id: uuid.UUID
-    preference_id: str
     init_point: str
+
+
+class PublicPaymentRead(BaseModel):
+    """Datos no sensibles de un pago pendiente, para la página de pago web."""
+    id: uuid.UUID
+    kind: str
+    title: str
+    amount: Decimal
+    amount_cents: int
+    currency: str
+    public_key: str
+    status: str
+
+
+class CulqiChargeRequest(BaseModel):
+    billing_payment_id: uuid.UUID
+    token: str
+
+
+class CulqiChargeResult(BaseModel):
+    status: str
+    kind: str
+    credits_granted: Optional[int] = None
+    premium_days: Optional[int] = None
 
 
 # Referidos

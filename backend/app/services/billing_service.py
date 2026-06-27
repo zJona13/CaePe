@@ -22,7 +22,7 @@ def create_credit_payment(db: Session, user: User, pack: CreditPack) -> BillingP
         kind=BillingKind.credits,
         pack_code=pack.code,
         amount=pack.price,
-        currency=settings.mp_currency,
+        currency=settings.currency,
         credits_granted=pack.credits,
         status=BillingStatus.pending,
     )
@@ -38,7 +38,7 @@ def create_premium_payment(db: Session, user: User) -> BillingPayment:
         kind=BillingKind.premium,
         pack_code=None,
         amount=PREMIUM_PRICE,
-        currency=settings.mp_currency,
+        currency=settings.currency,
         premium_days=settings.premium_days,
         status=BillingStatus.pending,
     )

@@ -29,7 +29,7 @@ export type BillingCatalog = {
 
 export type CheckoutResponse = {
   billing_payment_id: string;
-  preference_id: string;
+  // URL de la página de pago (Culqi Checkout) que se abre en el navegador.
   init_point: string;
 };
 

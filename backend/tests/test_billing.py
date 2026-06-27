@@ -107,20 +107,37 @@ def test_expired_premium_is_treated_as_free(client, make_user, db_session):
     assert me["events_remaining"] == 5
 
 
-# --- Catálogo + checkout + webhook (Mercado Pago) ---
+# --- Catálogo + checkout + cargo + webhook (Culqi) ---
 
-def _mock_mp(monkeypatch, *, approve_payment=None):
-    """Mockea el servicio MP: checkout siempre crea preferencia; get_payment opcional."""
-    from app.services import mercadopago_service
+def _mock_culqi(monkeypatch, *, paid: bool = True, error: str | None = None):
+    """Mockea el servicio Culqi: is_configured=True y create_charge controlable."""
+    import itertools
 
-    monkeypatch.setattr(mercadopago_service, "is_configured", lambda: True)
-    monkeypatch.setattr(
-        mercadopago_service,
-        "create_preference",
-        lambda **kw: {"id": "pref-123", "init_point": "https://mp.test/checkout/pref-123"},
-    )
-    if approve_payment is not None:
-        monkeypatch.setattr(mercadopago_service, "get_payment", lambda pid: approve_payment(pid))
+    from app.services import culqi_service
+
+    monkeypatch.setattr(culqi_service, "is_configured", lambda: True)
+    ids = itertools.count(1)
+    if error is not None:
+        def _raise(**kw):
+            raise culqi_service.CulqiError("rechazo", user_message=error)
+        monkeypatch.setattr(culqi_service, "create_charge", _raise)
+    else:
+        outcome = {"type": "venta_exitosa"} if paid else {"type": "rechazo"}
+        monkeypatch.setattr(
+            culqi_service,
+            "create_charge",
+            lambda **kw: {"id": f"chr_test_{next(ids)}", "object": "charge", "outcome": outcome},
+        )
+
+
+def _checkout(client, headers, pack="credits_10"):
+    r = client.post("/billing/credits/checkout", json={"pack_code": pack}, headers=headers)
+    assert r.status_code == 200, r.text
+    return r.json()["billing_payment_id"]
+
+
+def _charge(client, bp_id, token="tkn_test_x"):
+    return client.post("/billing/culqi/charge", json={"billing_payment_id": bp_id, "token": token})
 
 
 def test_catalog_lists_packs_and_premium(client):
@@ -133,83 +150,111 @@ def test_catalog_lists_packs_and_premium(client):
     assert body["currency"] == "PEN"
 
 
-def test_credits_checkout_requires_mp_configured(client, make_user):
-    u = make_user(email="nomp@example.com")
+def test_checkout_requires_culqi_configured(client, make_user, monkeypatch):
+    from app.services import culqi_service
+
+    monkeypatch.setattr(culqi_service, "is_configured", lambda: False)
+    u = make_user(email="nocfg@example.com")
     r = client.post("/billing/credits/checkout", json={"pack_code": "credits_10"}, headers=u["headers"])
     assert r.status_code == 503, r.text
 
 
-def test_credits_checkout_creates_pending_payment(client, make_user, db_session, monkeypatch):
-    _mock_mp(monkeypatch)
+def test_checkout_creates_pending_and_returns_pay_url(client, make_user, db_session, monkeypatch):
+    _mock_culqi(monkeypatch)
     u = make_user(email="buyer@example.com")
     r = client.post("/billing/credits/checkout", json={"pack_code": "credits_10"}, headers=u["headers"])
     assert r.status_code == 200, r.text
     body = r.json()
-    assert body["init_point"].endswith("pref-123")
-    assert body["preference_id"] == "pref-123"
+    assert "/pay?bp=" in body["init_point"]
 
     from app.models import BillingPayment, BillingStatus
 
     bp = db_session.get(BillingPayment, uuid.UUID(body["billing_payment_id"]))
     assert bp.status == BillingStatus.pending
     assert bp.credits_granted == 10
-    assert bp.mp_preference_id == "pref-123"
 
 
-def test_webhook_grants_credits_and_is_idempotent(client, make_user, db_session, monkeypatch):
+def test_public_payment_exposes_amount_in_cents(client, make_user, monkeypatch):
+    _mock_culqi(monkeypatch)
+    u = make_user(email="pub@example.com")
+    bp_id = _checkout(client, u["headers"])
+    p = client.get(f"/billing/payment/{bp_id}/public")
+    assert p.status_code == 200, p.text
+    body = p.json()
+    assert body["amount_cents"] == 800  # S/ 8.00
+    assert body["kind"] == "credits"
+
+
+def test_charge_grants_credits_and_is_idempotent(client, make_user, monkeypatch):
+    _mock_culqi(monkeypatch)
     u = make_user(email="buyer2@example.com")
-    _mock_mp(monkeypatch)
-    r = client.post("/billing/credits/checkout", json={"pack_code": "credits_25"}, headers=u["headers"])
-    bp_id = r.json()["billing_payment_id"]
+    bp_id = _checkout(client, u["headers"], pack="credits_25")
 
-    payment = {
-        "id": "mp-pay-1",
-        "status": "approved",
-        "external_reference": bp_id,
-    }
-    from app.services import mercadopago_service
-
-    monkeypatch.setattr(mercadopago_service, "get_payment", lambda pid: payment)
-
-    w = client.post("/billing/webhook", json={"type": "payment", "data": {"id": "mp-pay-1"}})
-    assert w.status_code == 200, w.text
+    c = _charge(client, bp_id)
+    assert c.status_code == 200, c.text
     assert client.get("/billing/me", headers=u["headers"]).json()["event_credits"] == 25
 
-    # Segunda notificación del mismo pago → no duplica.
-    w2 = client.post("/billing/webhook", json={"type": "payment", "data": {"id": "mp-pay-1"}})
-    assert w2.status_code == 200
+    # Re-cobrar el mismo pago no duplica (ya está approved).
+    c2 = _charge(client, bp_id)
+    assert c2.status_code == 200
     assert client.get("/billing/me", headers=u["headers"]).json()["event_credits"] == 25
 
 
-def test_webhook_grants_premium_and_accumulates(client, make_user, db_session, monkeypatch):
+def test_charge_rejected_returns_402(client, make_user, monkeypatch):
+    _mock_culqi(monkeypatch, error="Tu tarjeta fue rechazada")
+    u = make_user(email="rej@example.com")
+    bp_id = _checkout(client, u["headers"])
+    c = _charge(client, bp_id, token="tkn_bad")
+    assert c.status_code == 402, c.text
+    assert "rechaz" in c.json()["detail"].lower()
+    assert client.get("/billing/me", headers=u["headers"]).json()["event_credits"] == 0
+
+
+def test_premium_charge_accumulates(client, make_user, monkeypatch):
+    _mock_culqi(monkeypatch)
     u = make_user(email="prem@example.com")
-    _mock_mp(monkeypatch)
 
-    def buy_premium(ref_id):
-        payment = {"id": ref_id, "status": "approved", "external_reference": ref_id}
-        from app.services import mercadopago_service
-
-        monkeypatch.setattr(mercadopago_service, "get_payment", lambda pid: payment)
+    def buy():
         r = client.post("/billing/premium/checkout", headers=u["headers"])
         bp_id = r.json()["billing_payment_id"]
-        payment["external_reference"] = bp_id
-        return client.post("/billing/webhook", json={"type": "payment", "data": {"id": bp_id}})
+        return _charge(client, bp_id)
 
-    # Primer mes.
-    w1 = buy_premium("ref1")
-    assert w1.status_code == 200
+    assert buy().status_code == 200
     me1 = client.get("/billing/me", headers=u["headers"]).json()
     assert me1["is_premium"] is True
     first_until = me1["premium_until"]
 
-    # Segundo mes acumula sobre el saldo vigente.
-    w2 = buy_premium("ref2")
-    assert w2.status_code == 200
+    assert buy().status_code == 200
     me2 = client.get("/billing/me", headers=u["headers"]).json()
     assert me2["premium_until"] > first_until
 
 
-def test_webhook_ignores_non_payment_topic(client):
-    w = client.post("/billing/webhook", json={"type": "plan", "data": {"id": "x"}})
+def test_webhook_grants_as_backup_and_idempotent(client, make_user, monkeypatch):
+    _mock_culqi(monkeypatch)
+    u = make_user(email="wh@example.com")
+    bp_id = _checkout(client, u["headers"])
+
+    # Simula que el cobro síncrono no corrió y llega el webhook de Culqi.
+    from app.services import culqi_service
+
+    charge = {
+        "id": "chr_wh_1",
+        "object": "charge",
+        "outcome": {"type": "venta_exitosa"},
+        "metadata": {"billing_payment_id": bp_id},
+    }
+    monkeypatch.setattr(culqi_service, "get_charge", lambda cid: charge)
+
+    w = client.post("/billing/culqi/webhook", json={"data": {"id": "chr_wh_1"}})
+    assert w.status_code == 200, w.text
+    assert client.get("/billing/me", headers=u["headers"]).json()["event_credits"] == 10
+
+    w2 = client.post("/billing/culqi/webhook", json={"data": {"id": "chr_wh_1"}})
+    assert w2.status_code == 200
+    assert client.get("/billing/me", headers=u["headers"]).json()["event_credits"] == 10
+
+
+def test_webhook_ignores_non_charge_event(client):
+    w = client.post("/billing/culqi/webhook", json={"data": {"id": "ord_123"}})
     assert w.status_code == 200
     assert w.json()["status"] == "ignored"
