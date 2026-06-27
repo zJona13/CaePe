@@ -126,12 +126,20 @@ async def webhook(request: Request, db: DBSession) -> dict:
     if not data_id:
         return {"status": "ignored", "reason": "missing data id"}
 
+    # Firma como defensa en profundidad, NO como bloqueo: las notificaciones IPN
+    # legacy (topic=payment) no traen x-signature, y la fuente de verdad es
+    # get_payment() contra la API de MP con nuestro access token (solo otorgamos
+    # si el external_reference apunta a un billing_payment nuestro). Si la firma no
+    # valida, lo registramos y seguimos.
     if not mercadopago_service.verify_signature(
         signature_header=request.headers.get("x-signature"),
         request_id=request.headers.get("x-request-id"),
         data_id=str(data_id),
     ):
-        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "Firma de webhook inválida")
+        print(
+            f"[billing webhook] firma inválida o ausente (data.id={data_id}); "
+            "se continúa validando el pago contra la API de Mercado Pago"
+        )
 
     try:
         payment = mercadopago_service.get_payment(str(data_id))

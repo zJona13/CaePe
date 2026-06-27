@@ -98,7 +98,12 @@ def verify_signature(*, signature_header: str | None, request_id: str | None, da
     v1 = parts.get("v1")
     if not ts or not v1:
         return False
-    manifest = f"id:{data_id};request-id:{request_id or ''};ts:{ts};"
+    # MP arma el manifest omitiendo las claves cuyo valor no exista. El id va en
+    # minúsculas si es alfanumérico (los numéricos quedan igual).
+    manifest = f"id:{str(data_id).lower()};"
+    if request_id:
+        manifest += f"request-id:{request_id};"
+    manifest += f"ts:{ts};"
     expected = hmac.new(
         settings.mp_webhook_secret.encode(), manifest.encode(), hashlib.sha256
     ).hexdigest()
