@@ -7,6 +7,9 @@ export type RegisterBody = {
   phone?: string;
   payment_method?: 'yape' | 'plin' | null;
   payment_number?: string | null;
+  // Referidos: código de quien invitó + hash del dispositivo (anti-abuso).
+  referral_code?: string | null;
+  device_hash?: string | null;
 };
 
 export async function provisionAccount(body: RegisterBody, token: string): Promise<SessionUser> {

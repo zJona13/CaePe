@@ -2,7 +2,7 @@ import { router } from 'expo-router';
 import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Check, ChevronRight, Crown, LogOut, Settings, User } from 'lucide-react-native';
+import { Check, ChevronRight, Crown, Gift, LogOut, Settings, User } from 'lucide-react-native';
 import { Input } from '../../components/Input';
 import { KeyboardScreen } from '../../components/KeyboardScreen';
 import { PrimaryButton } from '../../components/PrimaryButton';
@@ -96,6 +96,20 @@ export default function Profile() {
                 {billing.data.event_credits > 0 ? ` · ${billing.data.event_credits} créditos` : ''}
               </Text>
             ) : null}
+          </View>
+          <ChevronRight size={18} color={colors.textMuted} strokeWidth={2.2} />
+        </Pressable>
+
+        <Pressable
+          onPress={() => router.push('/referrals')}
+          style={({ pressed }) => [styles.row, pressed && { opacity: 0.9 }]}
+        >
+          <View style={styles.rowIcon}>
+            <Gift size={18} color={colors.accent} strokeWidth={2.2} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.rowText}>Invita y gana Premium</Text>
+            <Text style={styles.rowSub}>Días gratis por cada amigo que arme su plan</Text>
           </View>
           <ChevronRight size={18} color={colors.textMuted} strokeWidth={2.2} />
         </Pressable>

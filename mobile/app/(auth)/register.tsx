@@ -1,12 +1,13 @@
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { Controller, useForm } from 'react-hook-form';
 import { useState } from 'react';
 import { Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Check, CreditCard, Eye, EyeOff, Lock, Mail, Phone, User } from 'lucide-react-native';
+import { Check, CreditCard, Eye, EyeOff, Gift, Lock, Mail, Phone, User } from 'lucide-react-native';
 import { Input } from '../../components/Input';
 import { KeyboardScreen } from '../../components/KeyboardScreen';
 import { PrimaryButton } from '../../components/PrimaryButton';
+import { getDeviceHash } from '../../lib/device';
 import { provisionAccount } from '../../lib/queries/auth';
 import { supabase } from '../../lib/supabase';
 import { useSession } from '../../lib/store';
@@ -24,6 +25,7 @@ type FormValues = {
   phone: string;
   password: string;
   payment_method: PaymentMethod;
+  referral_code: string;
 };
 
 function getRegisterErrorMessage(error: unknown) {
@@ -35,8 +37,12 @@ function getRegisterErrorMessage(error: unknown) {
 }
 
 export default function Register() {
+  const params = useLocalSearchParams<{ ref?: string }>();
   const { control, handleSubmit, formState: { errors } } = useForm<FormValues>({
-    defaultValues: { name: '', email: '', phone: '', password: '', payment_method: 'yape' },
+    defaultValues: {
+      name: '', email: '', phone: '', password: '', payment_method: 'yape',
+      referral_code: (params.ref ?? '').toString().toUpperCase(),
+    },
   });
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -50,12 +56,15 @@ export default function Register() {
       const { data, error: e } = await supabase.auth.signUp({ email: values.email, password: values.password });
       if (e || !data.session) throw new Error(e?.message ?? 'Sin sesión tras signUp (¿confirmar email habilitado?)');
       const token = data.session.access_token;
+      const referral = values.referral_code.trim().toUpperCase();
       const user = await provisionAccount({
         email: values.email,
         name: values.name,
         phone: values.phone,
         payment_method: values.payment_method,
         payment_number: values.phone,
+        referral_code: referral || null,
+        device_hash: referral ? await getDeviceHash() : null,
       }, token);
       setSession(user, token);
       router.replace('/(tabs)/home');
@@ -158,6 +167,22 @@ export default function Register() {
                   <PaymentOption method="yape" selected={value === 'yape'} onPress={() => onChange('yape')} />
                   <PaymentOption method="plin" selected={value === 'plin'} onPress={() => onChange('plin')} />
                 </View>
+              )}
+            />
+
+            <Controller control={control} name="referral_code"
+              render={({ field: { value, onChange } }) => (
+                <Input
+                  label="Código de invitación (opcional)"
+                  placeholder="Ej. A1B2C3D4"
+                  autoCapitalize="characters"
+                  autoCorrect={false}
+                  maxLength={8}
+                  iconLeft={<Gift size={20} color={colors.accent} strokeWidth={2} />}
+                  value={value}
+                  onChangeText={(t) => onChange(t.toUpperCase())}
+                  helper="¿Un amigo te invitó? Ingresa su código"
+                />
               )}
             />
 

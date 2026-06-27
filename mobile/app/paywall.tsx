@@ -1,36 +1,71 @@
-import { Alert, ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useState } from 'react';
+import { Alert, ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { BellRing, Check, Coins, Crown, Infinity as InfinityIcon } from 'lucide-react-native';
 import { PrimaryButton } from '../components/PrimaryButton';
 import { ScreenHeader } from '../components/ScreenHeader';
-import { useBillingMe } from '../lib/queries/billing';
+import { openCheckout } from '../lib/checkout';
+import {
+  useBillingCatalog,
+  useBillingMe,
+  useCreditsCheckout,
+  usePremiumCheckout,
+  useRefreshBilling,
+  type CreditPack,
+} from '../lib/queries/billing';
 import { colors } from '../theme/colors';
 import { radius } from '../theme/radius';
 import { shadows } from '../theme/shadows';
 import { spacing } from '../theme/spacing';
 import { typography } from '../theme/typography';
 
-// Precios referenciales (a confirmar). El checkout real con Mercado Pago llega
-// en la siguiente etapa; por ahora los CTA informan que viene pronto.
-const PACKS = [
-  { code: 'credits_10', credits: 10, price: '8.00' },
-  { code: 'credits_25', credits: 25, price: '15.00' },
+// Fallback si el catálogo aún no cargó (mismos precios que el backend).
+const FALLBACK_PACKS: CreditPack[] = [
+  { code: 'credits_10', credits: 10, price: '8.00', title: '10 créditos' },
+  { code: 'credits_25', credits: 25, price: '15.00', title: '25 créditos' },
 ];
-const PREMIUM_PRICE = '9.90';
-
-function comingSoon() {
-  Alert.alert(
-    'Ya casi 🙌',
-    'Los pagos con Mercado Pago están en camino. Te avisaremos apenas se active la compra.',
-  );
-}
+const FALLBACK_PREMIUM_PRICE = '9.90';
 
 export default function Paywall() {
   const billing = useBillingMe();
-  const me = billing.data;
+  const catalog = useBillingCatalog();
+  const creditsCheckout = useCreditsCheckout();
+  const premiumCheckout = usePremiumCheckout();
+  const refreshBilling = useRefreshBilling();
+  const [busy, setBusy] = useState<string | null>(null); // pack.code | 'premium'
 
+  const me = billing.data;
   const remaining = me?.events_remaining ?? null;
   const atLimit = me ? remaining === 0 && !me.is_premium : false;
+
+  const packs = catalog.data?.credit_packs ?? FALLBACK_PACKS;
+  const premiumPrice = catalog.data?.premium_price ?? FALLBACK_PREMIUM_PRICE;
+
+  const runCheckout = async (key: string, getInitPoint: () => Promise<string>) => {
+    if (busy) return;
+    setBusy(key);
+    try {
+      const initPoint = await getInitPoint();
+      const outcome = await openCheckout(initPoint);
+      await refreshBilling();
+      if (outcome === 'returned') {
+        Alert.alert(
+          '¡Gracias por tu compra! 🎉',
+          'Estamos confirmando tu pago con Mercado Pago. Tu beneficio se activa en unos segundos.',
+        );
+      }
+    } catch (e) {
+      Alert.alert('No se pudo abrir el pago', e instanceof Error ? e.message : 'Inténtalo de nuevo.');
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const buyCredits = (pack: CreditPack) =>
+    runCheckout(pack.code, async () => (await creditsCheckout.mutateAsync(pack.code)).init_point);
+
+  const buyPremium = () =>
+    runCheckout('premium', async () => (await premiumCheckout.mutateAsync()).init_point);
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
@@ -69,26 +104,34 @@ export default function Paywall() {
                 <Text style={styles.sectionTitle}>Compra créditos</Text>
                 <Text style={styles.sectionHint}>1 crédito = 1 evento extra. Sin vencimiento.</Text>
                 <View style={{ gap: spacing.sm }}>
-                  {PACKS.map((pack) => (
-                    <View key={pack.code} style={styles.packCard}>
-                      <View style={styles.packIcon}>
-                        <Coins size={20} color={colors.primary} strokeWidth={2.4} />
-                      </View>
-                      <View style={{ flex: 1 }}>
-                        <Text style={styles.packTitle}>{pack.credits} créditos</Text>
-                        <Text style={styles.packMeta}>{pack.credits} eventos extra</Text>
-                      </View>
-                      <Text style={styles.packPrice}>S/ {pack.price}</Text>
-                    </View>
-                  ))}
-                </View>
-                <View style={{ marginTop: spacing.sm }}>
-                  <PrimaryButton
-                    variant="ghost"
-                    label="Comprar créditos"
-                    onPress={comingSoon}
-                    icon={<Coins size={18} color={colors.primary} strokeWidth={2.5} />}
-                  />
+                  {packs.map((pack) => {
+                    const loading = busy === pack.code;
+                    return (
+                      <Pressable
+                        key={pack.code}
+                        onPress={() => buyCredits(pack)}
+                        disabled={!!busy}
+                        style={({ pressed }) => [
+                          styles.packCard,
+                          pressed && { transform: [{ scale: 0.99 }] },
+                          !!busy && !loading && { opacity: 0.5 },
+                        ]}
+                      >
+                        <View style={styles.packIcon}>
+                          <Coins size={20} color={colors.primary} strokeWidth={2.4} />
+                        </View>
+                        <View style={{ flex: 1 }}>
+                          <Text style={styles.packTitle}>{pack.credits} créditos</Text>
+                          <Text style={styles.packMeta}>{pack.credits} eventos extra</Text>
+                        </View>
+                        {loading ? (
+                          <ActivityIndicator color={colors.primary} />
+                        ) : (
+                          <Text style={styles.packPrice}>S/ {pack.price}</Text>
+                        )}
+                      </Pressable>
+                    );
+                  })}
                 </View>
 
                 {/* Premium */}
@@ -98,7 +141,7 @@ export default function Paywall() {
                   <View style={styles.premiumHead}>
                     <Crown size={22} color={colors.onAccent} strokeWidth={2.6} />
                     <Text style={styles.premiumTitle}>Premium</Text>
-                    <Text style={styles.premiumPrice}>S/ {PREMIUM_PRICE}<Text style={styles.premiumPer}>/mes</Text></Text>
+                    <Text style={styles.premiumPrice}>S/ {premiumPrice}<Text style={styles.premiumPer}>/mes</Text></Text>
                   </View>
                   <View style={styles.benefit}>
                     <InfinityIcon size={16} color={colors.onAccent} strokeWidth={2.6} />
@@ -117,13 +160,15 @@ export default function Paywall() {
                   <PrimaryButton
                     variant="accent"
                     label="Hazte Premium"
-                    onPress={comingSoon}
+                    onPress={buyPremium}
+                    loading={busy === 'premium'}
+                    disabled={!!busy && busy !== 'premium'}
                     icon={<Crown size={18} color={colors.onAccent} strokeWidth={2.6} />}
                   />
                 </View>
 
                 <Text style={styles.footnote}>
-                  Pagos con Mercado Pago (Yape/Plin/tarjeta) — muy pronto. Precios referenciales.
+                  Pagas con Mercado Pago: Yape, Plin o tarjeta. El pago se confirma solo, sin que hagas nada más.
                 </Text>
               </>
             )}

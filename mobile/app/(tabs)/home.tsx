@@ -3,6 +3,7 @@ import { useState, type ReactNode } from 'react';
 import { ActivityIndicator, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Bell, Calendar, Clock, Compass, MapPin, Plus, Sparkles, Users } from 'lucide-react-native';
+import { AdBanner } from '../../components/AdBanner';
 import { EmptyState } from '../../components/EmptyState';
 import { Input } from '../../components/Input';
 import { PrimaryButton } from '../../components/PrimaryButton';
@@ -115,6 +116,8 @@ export default function Home() {
             </View>
           </View>
         </Pressable>
+
+        <AdBanner />
 
         <SectionHeader title="Mis Grupos" actionLabel="Ver todos" onAction={() => { /* TODO: pantalla de todos los grupos */ }} />
         {groups.isLoading ? (
