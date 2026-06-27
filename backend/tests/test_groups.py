@@ -82,3 +82,24 @@ def test_get_group_forbidden_for_non_member(client, make_user):
 
     r = client.get(f"/groups/{g['id']}", headers=stranger["headers"])
     assert r.status_code == 403
+
+
+def test_get_group_by_invite_is_public(client, make_user):
+    owner = make_user(email="owner@example.com")
+    g = client.post("/groups", json={"name": "La Collera"}, headers=owner["headers"]).json()
+
+    # Sin headers de auth: la lectura por código debe ser pública.
+    r = client.get(f"/groups/by-invite/{g['invite_code']}")
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["id"] == g["id"]
+    assert body["name"] == "La Collera"
+    assert body["members_count"] == 1  # el owner
+    # No debe filtrar datos sensibles.
+    assert "invite_code" not in body
+    assert "owner_id" not in body
+
+
+def test_get_group_by_invite_unknown_code_returns_404(client):
+    r = client.get("/groups/by-invite/NOPECODE")
+    assert r.status_code == 404, r.text

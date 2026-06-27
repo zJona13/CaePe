@@ -25,10 +25,10 @@ export default function GroupDetail() {
   const shareWhatsapp = async () => {
     if (!group.data) return;
     const code = group.data.invite_code;
-    const link = `caepe://groups/join/${code}`;
+    const link = `https://caepe.lat/groups/join/${code}`;
     const msg =
       `¡Habla! Únete a "${group.data.name}" en CaePe 🎉\n\n` +
-      `📲 Si ya tienes la app, abre: ${link}\n` +
+      `👉 Únete acá: ${link}\n` +
       `🔑 O entra a CaePe y mete el código: ${code}`;
     try { await Linking.openURL(`whatsapp://send?text=${encodeURIComponent(msg)}`); } catch { /* ignore */ }
   };

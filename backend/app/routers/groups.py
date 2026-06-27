@@ -16,6 +16,7 @@ from app.models import (
 )
 from app.schemas import (
     GroupCreate,
+    GroupInvitePublic,
     GroupJoinBody,
     GroupMemberDetailRead,
     GroupMemberRead,
@@ -91,6 +92,28 @@ def list_groups(current: CurrentUser, db: DBSession) -> list[Group]:
         group.members_count = int(count)
         result.append(group)
     return result
+
+
+@router.get("/by-invite/{invite_code}", response_model=GroupInvitePublic)
+def get_group_by_invite(invite_code: str, db: DBSession) -> Group:
+    """Public read of a group resolved from its invite code (for the web invite page)."""
+    group = db.execute(
+        select(Group).where(Group.invite_code == invite_code)
+    ).scalar_one_or_none()
+    if group is None:
+        invitation = db.execute(
+            select(Invitation).where(
+                Invitation.invite_code == invite_code,
+                Invitation.group_id.is_not(None),
+            )
+        ).scalar_one_or_none()
+        if invitation is None:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "Invitation not found")
+        group = db.get(Group, invitation.group_id)
+        if group is None:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "Group not found")
+    group.members_count = _count_active_members(db, group.id)
+    return group
 
 
 @router.get("/{group_id}", response_model=GroupRead)

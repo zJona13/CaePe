@@ -66,6 +66,13 @@ class GroupRead(_ORM):
     members_count: int = 0
 
 
+class GroupInvitePublic(_ORM):
+    """Vista pública de un grupo resuelto por su código (para la página de invitación web)."""
+    id: uuid.UUID
+    name: str
+    members_count: int = 0
+
+
 # Group members
 class GroupMemberCreate(BaseModel):
     user_id: Optional[uuid.UUID] = None
