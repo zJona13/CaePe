@@ -7,15 +7,63 @@ from decimal import ROUND_HALF_UP, Decimal
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from app.config import settings
 from app.models import (
     Event,
     EventParticipant,
     EventStatus,
     ParticipantPaymentStatus,
+    User,
 )
 
 
 _TWO_PLACES = Decimal("0.01")
+
+
+class EventLimitReached(Exception):
+    """Free user has no remaining events in the free quota nor credits left."""
+
+    def __init__(self, events_created: int, limit: int, credits: int) -> None:
+        self.events_created = events_created
+        self.limit = limit
+        self.credits = credits
+        super().__init__("Event limit reached")
+
+
+def is_premium_active(user: User, now: datetime | None = None) -> bool:
+    """Premium is active purely based on premium_until (the plan column is denormalized)."""
+    pu = user.premium_until
+    if pu is None:
+        return False
+    if pu.tzinfo is None:  # SQLite devuelve datetimes naive; asumir UTC.
+        pu = pu.replace(tzinfo=timezone.utc)
+    return pu > (now or utcnow())
+
+
+def events_created_count(db: Session, user_id: uuid.UUID) -> int:
+    """Lifetime count of events created by the user as organizer."""
+    return db.execute(
+        select(func.count(Event.id)).where(Event.organizer_id == user_id)
+    ).scalar_one()
+
+
+def consume_event_allowance(db: Session, user: User) -> str:
+    """Ensure the user may create one more event, consuming a credit if needed.
+
+    Returns the allowance source: 'premium' | 'free_quota' | 'credit'.
+    Raises EventLimitReached when a free user is out of quota and has no credits.
+    The caller's transaction commits any credit decrement.
+    """
+    if is_premium_active(user):
+        return "premium"
+    created = events_created_count(db, user.id)
+    if created < settings.free_event_limit:
+        return "free_quota"
+    if user.event_credits > 0:
+        user.event_credits -= 1
+        db.add(user)
+        return "credit"
+    raise EventLimitReached(created, settings.free_event_limit, user.event_credits)
 
 
 def calculate_amount_per_person(total_budget: Decimal, n: int) -> Decimal:

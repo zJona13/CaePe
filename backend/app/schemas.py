@@ -15,6 +15,7 @@ from app.models import (
     PaymentMethod,
     PaymentStatus,
     PlanCategory,
+    UserPlan,
 )
 
 
@@ -46,6 +47,18 @@ class UserRead(_ORM):
     payment_method: Optional[PaymentMethod] = None
     payment_number: Optional[str] = None
     created_at: datetime
+
+
+class BillingMe(BaseModel):
+    """Estado del plan del usuario para mostrar paywall y eventos restantes."""
+    plan: UserPlan
+    is_premium: bool
+    premium_until: Optional[datetime] = None
+    event_credits: int
+    events_created: int
+    free_event_limit: int
+    # None = ilimitado (premium)
+    events_remaining: Optional[int] = None
 
 
 # Groups

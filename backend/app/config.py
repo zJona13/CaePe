@@ -16,6 +16,9 @@ class Settings(BaseSettings):
     # Coma-separado; "*" permite cualquiera.
     cors_origins: str = "https://caepe.lat,https://www.caepe.lat,http://localhost:3000,http://localhost:5173"
 
+    # Monetización: tope de eventos creados (de por vida) en el plan free.
+    free_event_limit: int = 5
+
     # Solo necesitas SUPABASE_URL y SUPABASE_JWT_SECRET en el .env.
     # El JWKS URL y el issuer se derivan de SUPABASE_URL (ver propiedades abajo).
     supabase_url: str = ""

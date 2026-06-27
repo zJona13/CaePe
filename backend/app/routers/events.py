@@ -30,9 +30,11 @@ from app.schemas import (
     ShareMessage,
 )
 from app.services.events_service import (
+    EventLimitReached,
     build_whatsapp_message,
     calculate_amount_per_person,
     check_and_mark_funded,
+    consume_event_allowance,
     recalculate_on_participant_change,
     utcnow,
 )
@@ -91,6 +93,22 @@ def _scrub_proofs(detail: EventDetailRead, event: Event, viewer_id: uuid.UUID | 
 @router.post("", response_model=EventDetailRead, status_code=status.HTTP_201_CREATED)
 def create_event(payload: EventCreate, current: CurrentUser, db: DBSession) -> EventDetailRead:
     _ensure_group_access(db, payload.group_id, current.id)
+
+    # Plan gating: free users tope al límite; consume un crédito si lo tiene.
+    try:
+        consume_event_allowance(db, current)
+    except EventLimitReached as e:
+        raise HTTPException(
+            status.HTTP_402_PAYMENT_REQUIRED,
+            detail={
+                "code": "event_limit_reached",
+                "message": f"Llegaste al límite de {e.limit} eventos del plan gratis. "
+                "Compra créditos o pásate a Premium para crear más.",
+                "events_created": e.events_created,
+                "limit": e.limit,
+                "credits": e.credits,
+            },
+        ) from e
 
     # Resolve members → participants. Dedupe by user_id.
     seen_user_ids: set[uuid.UUID] = set()

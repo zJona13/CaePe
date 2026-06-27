@@ -11,6 +11,7 @@ from sqlalchemy import (
     DateTime,
     Enum as SAEnum,
     ForeignKey,
+    Integer,
     Numeric,
     String,
     Text,
@@ -68,6 +69,34 @@ class GroupMemberStatus(str, enum.Enum):
     removed = "removed"
 
 
+class UserPlan(str, enum.Enum):
+    free = "free"
+    premium = "premium"
+
+
+class BillingKind(str, enum.Enum):
+    credits = "credits"
+    premium = "premium"
+
+
+class BillingStatus(str, enum.Enum):
+    pending = "pending"
+    approved = "approved"
+    rejected = "rejected"
+    refunded = "refunded"
+
+
+class ReferralStatus(str, enum.Enum):
+    pending = "pending"
+    qualified = "qualified"
+    rewarded = "rewarded"
+
+
+class BannerAudience(str, enum.Enum):
+    all = "all"
+    free_only = "free_only"
+
+
 def _uuid() -> uuid.UUID:
     return uuid.uuid4()
 
@@ -83,6 +112,19 @@ class User(Base):
         SAEnum(PaymentMethod, name="payment_method"), nullable=True
     )
     payment_number: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    plan: Mapped[UserPlan] = mapped_column(
+        SAEnum(UserPlan, name="user_plan"),
+        nullable=False,
+        default=UserPlan.free,
+        server_default=UserPlan.free.value,
+    )
+    premium_until: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    event_credits: Mapped[int] = mapped_column(
+        Integer, nullable=False, default=0, server_default="0"
+    )
+    referral_code: Mapped[str | None] = mapped_column(
+        String(8), unique=True, nullable=True, index=True
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
@@ -261,6 +303,85 @@ class Invitation(Base):
     )
     invite_code: Mapped[str] = mapped_column(String(16), unique=True, nullable=False, index=True)
     expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
+class BillingPayment(Base):
+    """Pago de monetización vía Mercado Pago (créditos de eventos o mes premium)."""
+
+    __tablename__ = "billing_payments"
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=_uuid)
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    kind: Mapped[BillingKind] = mapped_column(SAEnum(BillingKind, name="billing_kind"), nullable=False)
+    pack_code: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    amount: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
+    currency: Mapped[str] = mapped_column(String(8), nullable=False, default="PEN", server_default="PEN")
+    mp_preference_id: Mapped[str | None] = mapped_column(String(120), nullable=True, index=True)
+    mp_payment_id: Mapped[str | None] = mapped_column(String(120), unique=True, nullable=True, index=True)
+    status: Mapped[BillingStatus] = mapped_column(
+        SAEnum(BillingStatus, name="billing_status"),
+        nullable=False,
+        default=BillingStatus.pending,
+        server_default=BillingStatus.pending.value,
+    )
+    credits_granted: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    premium_days: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+    confirmed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
+class Referral(Base):
+    """Referido: el referente gana premium cuando el referido fondea un evento."""
+
+    __tablename__ = "referrals"
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=_uuid)
+    referrer_user_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    referred_user_id: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True
+    )
+    status: Mapped[ReferralStatus] = mapped_column(
+        SAEnum(ReferralStatus, name="referral_status"),
+        nullable=False,
+        default=ReferralStatus.pending,
+        server_default=ReferralStatus.pending.value,
+    )
+    device_hash: Mapped[str | None] = mapped_column(String(128), nullable=True, index=True)
+    qualified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    rewarded_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
+class AppBanner(Base):
+    """Banner de publicidad mostrado en Home, editable desde el backend."""
+
+    __tablename__ = "app_banners"
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=_uuid)
+    title: Mapped[str | None] = mapped_column(String(160), nullable=True)
+    image_url: Mapped[str] = mapped_column(String(500), nullable=False)
+    link_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    audience: Mapped[BannerAudience] = mapped_column(
+        SAEnum(BannerAudience, name="banner_audience"),
+        nullable=False,
+        default=BannerAudience.all,
+        server_default=BannerAudience.all.value,
+    )
+    is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True, server_default="true")
+    priority: Mapped[int] = mapped_column(Integer, nullable=False, default=0, server_default="0")
+    starts_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    ends_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
