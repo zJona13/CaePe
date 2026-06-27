@@ -96,8 +96,13 @@ def create_payment(
 
     data = resp.json() if resp.content else {}
     if resp.status_code in (200, 201) and data.get("id"):
+        print(
+            f"[mp create_payment] OK id={data.get('id')} status={data.get('status')} "
+            f"status_detail={data.get('status_detail')}"
+        )
         return data
 
+    print(f"[mp create_payment] FALLO http={resp.status_code} data={data}")
     msg = data.get("message") or "No se pudo procesar el pago."
     raise MercadoPagoError(f"MP {resp.status_code}: {data}", user_message=msg)
 

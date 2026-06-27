@@ -149,6 +149,7 @@ def charge(payload: MPChargeRequest, db: DBSession) -> MPChargeResult:
             metadata={"billing_payment_id": str(bp.id), "description": billing_service.payment_title(bp)},
         )
     except mercadopago_service.MercadoPagoError as e:
+        print(f"[mp charge] error bp={bp.id} -> {e}")
         raise HTTPException(status.HTTP_402_PAYMENT_REQUIRED, e.user_message) from e
 
     mp_id = str(payment.get("id"))
@@ -165,6 +166,10 @@ def charge(payload: MPChargeRequest, db: DBSession) -> MPChargeResult:
         return _result(bp, "pending", mp_status)
 
     # rejected / cancelled
+    print(
+        f"[mp charge] rechazado bp={bp.id} mp_id={mp_id} status={mp_status} "
+        f"status_detail={payment.get('status_detail')}"
+    )
     bp.status = BillingStatus.rejected
     bp.mp_payment_id = mp_id
     db.add(bp)
