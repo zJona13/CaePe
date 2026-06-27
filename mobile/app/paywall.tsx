@@ -168,7 +168,7 @@ export default function Paywall() {
                 </View>
 
                 <Text style={styles.footnote}>
-                  Pagas con Culqi: tarjeta o Yape. El pago se confirma al instante, sin que hagas nada más.
+                  Pagas con tarjeta vía Mercado Pago. El pago se confirma al instante, sin que hagas nada más.
                 </Text>
               </>
             )}

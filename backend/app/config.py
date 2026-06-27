@@ -19,16 +19,16 @@ class Settings(BaseSettings):
     # Monetización: tope de eventos creados (de por vida) en el plan free.
     free_event_limit: int = 5
 
-    # --- Culqi (pasarela de pagos) ---
-    # Local/integración: claves de PRUEBA (pk_test_... / sk_test_...).
-    # Producción: pk_live_... / sk_live_...
-    # Si culqi_secret_key está vacío, los endpoints de checkout responden 503.
-    culqi_public_key: str = ""
-    culqi_secret_key: str = ""
-    # Secreto opcional para validar la firma del webhook de Culqi.
-    # Si está vacío, NO se valida (la verdad la da consultar el cargo en la API).
-    culqi_webhook_secret: str = ""
-    culqi_api_base: str = "https://api.culqi.com/v2"
+    # --- Mercado Pago (Checkout API / pago transparente) ---
+    # Integración: credenciales de PRUEBA (TEST-...). Producción: APP_USR-...
+    # mp_public_key se usa en el front (tokeniza la tarjeta); mp_access_token en el
+    # backend (crea el pago). Si mp_access_token está vacío, /checkout responde 503.
+    mp_access_token: str = ""
+    mp_public_key: str = ""
+    # "Clave secreta" del webhook (panel MP) para validar la firma x-signature.
+    # Si está vacía, NO se valida (la verdad la da consultar el pago en la API).
+    mp_webhook_secret: str = ""
+    mp_api_base: str = "https://api.mercadopago.com"
     currency: str = "PEN"
 
     # URL pública del backend (para el notification_url del webhook).

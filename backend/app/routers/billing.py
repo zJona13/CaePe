@@ -21,11 +21,11 @@ from app.schemas import (
     CheckoutResponse,
     CreditCheckoutRequest,
     CreditPackRead,
-    CulqiChargeRequest,
-    CulqiChargeResult,
+    MPChargeRequest,
+    MPChargeResult,
     PublicPaymentRead,
 )
-from app.services import billing_service, culqi_service
+from app.services import billing_service, mercadopago_service
 from app.services.events_service import events_created_count, is_premium_active
 
 router = APIRouter(prefix="/billing", tags=["billing"])
@@ -68,15 +68,15 @@ def catalog() -> BillingCatalog:
 
 
 def _pay_url(bp: BillingPayment) -> str:
-    """URL de la página de pago (en la landing) que carga Culqi Checkout."""
+    """URL de la página de pago (en la landing) que tokeniza con Mercado Pago."""
     return f"{settings.public_web_url.rstrip('/')}/pay?bp={bp.id}"
 
 
 def _start_checkout(db, bp: BillingPayment) -> CheckoutResponse:
-    if not culqi_service.is_configured():
+    if not mercadopago_service.is_configured():
         raise HTTPException(
             status.HTTP_503_SERVICE_UNAVAILABLE,
-            "Pagos no disponibles: falta configurar Culqi.",
+            "Pagos no disponibles: falta configurar Mercado Pago.",
         )
     db.commit()
     return CheckoutResponse(billing_payment_id=bp.id, init_point=_pay_url(bp))
@@ -110,101 +110,123 @@ def public_payment(payment_id: uuid.UUID, db: DBSession) -> PublicPaymentRead:
         kind=bp.kind.value,
         title=billing_service.payment_title(bp),
         amount=bp.amount,
-        amount_cents=culqi_service.to_cents(bp.amount),
         currency=bp.currency,
-        public_key=settings.culqi_public_key,
+        public_key=settings.mp_public_key,
         status=bp.status.value,
     )
 
 
-@router.post("/culqi/charge", response_model=CulqiChargeResult)
-def culqi_charge(payload: CulqiChargeRequest, db: DBSession) -> CulqiChargeResult:
-    """Cobra un pago pendiente con el token de Culqi y otorga el beneficio.
+@router.post("/charge", response_model=MPChargeResult)
+def charge(payload: MPChargeRequest, db: DBSession) -> MPChargeResult:
+    """Cobra un pago pendiente con el token de Mercado Pago y otorga el beneficio.
 
-    Lo llama la página de pago web (sin JWT): recibe el token tokenizado por
-    Culqi Checkout y crea el cargo del lado del servidor. Si el cargo es exitoso,
-    otorga créditos/premium de forma idempotente.
+    Lo llama la página de pago web (sin JWT): recibe el token tokenizado por el
+    Brick de MP y crea el pago del lado del servidor. Si queda 'approved', otorga
+    créditos/premium de forma idempotente; si queda 'in_process', espera al webhook.
     """
-    if not culqi_service.is_configured():
+    if not mercadopago_service.is_configured():
         raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, "Pagos no disponibles.")
 
     bp = db.get(BillingPayment, payload.billing_payment_id)
     if bp is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Pago no encontrado")
     if bp.status == BillingStatus.approved:
-        return _charge_result(bp, "ok")
+        return _result(bp, "ok", "approved")
 
     user = db.get(User, bp.user_id)
-    email = (user.email if user else None) or "comprador@caepe.lat"
+    email = payload.payer_email or (user.email if user else None) or "comprador@caepe.lat"
 
     try:
-        charge = culqi_service.create_charge(
+        payment = mercadopago_service.create_payment(
             token=payload.token,
             amount=bp.amount,
             email=email,
-            metadata={"billing_payment_id": str(bp.id)},
+            payment_method_id=payload.payment_method_id,
+            installments=payload.installments,
+            issuer_id=payload.issuer_id,
+            external_reference=str(bp.id),
+            identification=payload.identification,
+            metadata={"billing_payment_id": str(bp.id), "description": billing_service.payment_title(bp)},
         )
-    except culqi_service.CulqiError as e:
-        bp.status = BillingStatus.rejected
-        db.add(bp)
-        db.commit()
+    except mercadopago_service.MercadoPagoError as e:
         raise HTTPException(status.HTTP_402_PAYMENT_REQUIRED, e.user_message) from e
 
-    if not culqi_service.charge_is_paid(charge):
-        bp.status = BillingStatus.rejected
+    mp_id = str(payment.get("id"))
+    if mercadopago_service.payment_is_approved(payment):
+        billing_service.apply_approved_payment(db, bp, mp_id)
+        db.commit()
+        return _result(bp, "ok", "approved")
+
+    mp_status = payment.get("status")
+    if mp_status in ("in_process", "pending", "authorized"):
+        bp.mp_payment_id = mp_id
         db.add(bp)
         db.commit()
-        raise HTTPException(status.HTTP_402_PAYMENT_REQUIRED, "El pago no fue aprobado.")
+        return _result(bp, "pending", mp_status)
 
-    billing_service.apply_approved_payment(db, bp, str(charge.get("id")))
+    # rejected / cancelled
+    bp.status = BillingStatus.rejected
+    bp.mp_payment_id = mp_id
+    db.add(bp)
     db.commit()
-    return _charge_result(bp, "ok")
+    raise HTTPException(
+        status.HTTP_402_PAYMENT_REQUIRED, mercadopago_service.rejection_message(payment)
+    )
 
 
-def _charge_result(bp: BillingPayment, status_str: str) -> CulqiChargeResult:
-    return CulqiChargeResult(
+def _result(bp: BillingPayment, status_str: str, payment_status: str) -> MPChargeResult:
+    return MPChargeResult(
         status=status_str,
+        payment_status=payment_status,
         kind=bp.kind.value,
         credits_granted=bp.credits_granted if bp.kind == BillingKind.credits else None,
         premium_days=bp.premium_days if bp.kind == BillingKind.premium else None,
     )
 
 
-@router.post("/culqi/webhook")
-async def culqi_webhook(request: Request, db: DBSession) -> dict:
-    """Webhook de Culqi (respaldo del cobro síncrono). Idempotente por charge id.
+@router.post("/webhook")
+async def webhook(request: Request, db: DBSession) -> dict:
+    """Webhook de Mercado Pago (respaldo del cobro síncrono). Idempotente por payment id.
 
-    La firma es defensa en profundidad: la verdad la da consultar el cargo en la
-    API de Culqi con nuestra secret key y otorgar solo si el metadata apunta a un
+    La firma es defensa en profundidad: la verdad la da consultar el pago en la API
+    de MP con nuestro access token y otorgar solo si el external_reference apunta a un
     billing_payment nuestro.
     """
     raw = await request.body()
-    if not culqi_service.verify_signature(
-        signature_header=request.headers.get("x-culqi-signature"),
-        raw_body=raw,
-    ):
-        print("[culqi webhook] firma inválida o ausente; se valida contra la API de Culqi")
+    body = await request.json() if raw else {}
+    query = dict(request.query_params)
 
-    event = await request.json() if raw else {}
-    # El cuerpo trae el objeto del evento; el cargo puede venir en 'data' o plano.
-    obj = event.get("data") or event
-    charge_id = obj.get("id") if isinstance(obj, dict) else None
-    if not charge_id or not str(charge_id).startswith("chr_"):
-        return {"status": "ignored", "reason": "not a charge event"}
+    topic = body.get("type") or query.get("type") or query.get("topic")
+    data_id = (body.get("data") or {}).get("id") or query.get("data.id") or query.get("id")
+
+    if topic and topic != "payment":
+        return {"status": "ignored", "reason": "not a payment topic"}
+    if not data_id:
+        return {"status": "ignored", "reason": "missing data id"}
+
+    if not mercadopago_service.verify_signature(
+        signature_header=request.headers.get("x-signature"),
+        request_id=request.headers.get("x-request-id"),
+        data_id=str(data_id),
+    ):
+        print(
+            f"[mp webhook] firma inválida o ausente (data.id={data_id}); "
+            "se valida el pago contra la API de Mercado Pago"
+        )
 
     try:
-        charge = culqi_service.get_charge(str(charge_id))
-    except culqi_service.CulqiError:
-        return {"status": "ignored", "reason": "charge not found"}
+        payment = mercadopago_service.get_payment(str(data_id))
+    except mercadopago_service.MercadoPagoError:
+        return {"status": "ignored", "reason": "payment not found"}
 
-    # Idempotencia por charge id (reutilizamos la columna mp_payment_id).
+    mp_payment_id = str(payment.get("id") or data_id)
     already = db.execute(
-        select(BillingPayment).where(BillingPayment.mp_payment_id == str(charge_id))
+        select(BillingPayment).where(BillingPayment.mp_payment_id == mp_payment_id)
     ).scalar_one_or_none()
     if already is not None and already.status == BillingStatus.approved:
         return {"status": "ok", "detail": "already processed"}
 
-    ref = (charge.get("metadata") or {}).get("billing_payment_id")
+    ref = payment.get("external_reference")
     bp = None
     if ref:
         try:
@@ -212,11 +234,17 @@ async def culqi_webhook(request: Request, db: DBSession) -> dict:
         except (ValueError, TypeError):
             bp = None
     if bp is None:
-        return {"status": "ignored", "reason": "unknown billing_payment"}
+        return {"status": "ignored", "reason": "unknown external_reference"}
 
-    if culqi_service.charge_is_paid(charge):
-        billing_service.apply_approved_payment(db, bp, str(charge_id))
+    if mercadopago_service.payment_is_approved(payment):
+        billing_service.apply_approved_payment(db, bp, mp_payment_id)
         db.commit()
         return {"status": "ok", "detail": "granted"}
 
-    return {"status": "ok", "detail": "charge not paid"}
+    if payment.get("status") in ("rejected", "cancelled"):
+        bp.status = BillingStatus.rejected
+        bp.mp_payment_id = mp_payment_id
+        db.add(bp)
+        db.commit()
+
+    return {"status": "ok", "detail": f"status {payment.get('status')}"}

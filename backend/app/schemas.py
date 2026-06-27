@@ -97,19 +97,25 @@ class PublicPaymentRead(BaseModel):
     kind: str
     title: str
     amount: Decimal
-    amount_cents: int
     currency: str
     public_key: str
     status: str
 
 
-class CulqiChargeRequest(BaseModel):
+class MPChargeRequest(BaseModel):
+    """Datos que envía el Brick de Mercado Pago tras tokenizar la tarjeta."""
     billing_payment_id: uuid.UUID
     token: str
+    payment_method_id: str
+    installments: int = 1
+    issuer_id: Optional[str] = None
+    payer_email: Optional[str] = None
+    identification: Optional[dict] = None
 
 
-class CulqiChargeResult(BaseModel):
-    status: str
+class MPChargeResult(BaseModel):
+    status: str  # ok | pending
+    payment_status: str  # approved | in_process | ...
     kind: str
     credits_granted: Optional[int] = None
     premium_days: Optional[int] = None
