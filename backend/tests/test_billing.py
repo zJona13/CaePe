@@ -105,3 +105,111 @@ def test_expired_premium_is_treated_as_free(client, make_user, db_session):
     me = client.get("/billing/me", headers=u["headers"]).json()
     assert me["is_premium"] is False
     assert me["events_remaining"] == 5
+
+
+# --- Catálogo + checkout + webhook (Mercado Pago) ---
+
+def _mock_mp(monkeypatch, *, approve_payment=None):
+    """Mockea el servicio MP: checkout siempre crea preferencia; get_payment opcional."""
+    from app.services import mercadopago_service
+
+    monkeypatch.setattr(mercadopago_service, "is_configured", lambda: True)
+    monkeypatch.setattr(
+        mercadopago_service,
+        "create_preference",
+        lambda **kw: {"id": "pref-123", "init_point": "https://mp.test/checkout/pref-123"},
+    )
+    if approve_payment is not None:
+        monkeypatch.setattr(mercadopago_service, "get_payment", lambda pid: approve_payment(pid))
+
+
+def test_catalog_lists_packs_and_premium(client):
+    r = client.get("/billing/catalog")
+    assert r.status_code == 200, r.text
+    body = r.json()
+    codes = {p["code"] for p in body["credit_packs"]}
+    assert codes == {"credits_10", "credits_25"}
+    assert body["premium_price"] == "9.90"
+    assert body["currency"] == "PEN"
+
+
+def test_credits_checkout_requires_mp_configured(client, make_user):
+    u = make_user(email="nomp@example.com")
+    r = client.post("/billing/credits/checkout", json={"pack_code": "credits_10"}, headers=u["headers"])
+    assert r.status_code == 503, r.text
+
+
+def test_credits_checkout_creates_pending_payment(client, make_user, db_session, monkeypatch):
+    _mock_mp(monkeypatch)
+    u = make_user(email="buyer@example.com")
+    r = client.post("/billing/credits/checkout", json={"pack_code": "credits_10"}, headers=u["headers"])
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["init_point"].endswith("pref-123")
+    assert body["preference_id"] == "pref-123"
+
+    from app.models import BillingPayment, BillingStatus
+
+    bp = db_session.get(BillingPayment, uuid.UUID(body["billing_payment_id"]))
+    assert bp.status == BillingStatus.pending
+    assert bp.credits_granted == 10
+    assert bp.mp_preference_id == "pref-123"
+
+
+def test_webhook_grants_credits_and_is_idempotent(client, make_user, db_session, monkeypatch):
+    u = make_user(email="buyer2@example.com")
+    _mock_mp(monkeypatch)
+    r = client.post("/billing/credits/checkout", json={"pack_code": "credits_25"}, headers=u["headers"])
+    bp_id = r.json()["billing_payment_id"]
+
+    payment = {
+        "id": "mp-pay-1",
+        "status": "approved",
+        "external_reference": bp_id,
+    }
+    from app.services import mercadopago_service
+
+    monkeypatch.setattr(mercadopago_service, "get_payment", lambda pid: payment)
+
+    w = client.post("/billing/webhook", json={"type": "payment", "data": {"id": "mp-pay-1"}})
+    assert w.status_code == 200, w.text
+    assert client.get("/billing/me", headers=u["headers"]).json()["event_credits"] == 25
+
+    # Segunda notificación del mismo pago → no duplica.
+    w2 = client.post("/billing/webhook", json={"type": "payment", "data": {"id": "mp-pay-1"}})
+    assert w2.status_code == 200
+    assert client.get("/billing/me", headers=u["headers"]).json()["event_credits"] == 25
+
+
+def test_webhook_grants_premium_and_accumulates(client, make_user, db_session, monkeypatch):
+    u = make_user(email="prem@example.com")
+    _mock_mp(monkeypatch)
+
+    def buy_premium(ref_id):
+        payment = {"id": ref_id, "status": "approved", "external_reference": ref_id}
+        from app.services import mercadopago_service
+
+        monkeypatch.setattr(mercadopago_service, "get_payment", lambda pid: payment)
+        r = client.post("/billing/premium/checkout", headers=u["headers"])
+        bp_id = r.json()["billing_payment_id"]
+        payment["external_reference"] = bp_id
+        return client.post("/billing/webhook", json={"type": "payment", "data": {"id": bp_id}})
+
+    # Primer mes.
+    w1 = buy_premium("ref1")
+    assert w1.status_code == 200
+    me1 = client.get("/billing/me", headers=u["headers"]).json()
+    assert me1["is_premium"] is True
+    first_until = me1["premium_until"]
+
+    # Segundo mes acumula sobre el saldo vigente.
+    w2 = buy_premium("ref2")
+    assert w2.status_code == 200
+    me2 = client.get("/billing/me", headers=u["headers"]).json()
+    assert me2["premium_until"] > first_until
+
+
+def test_webhook_ignores_non_payment_topic(client):
+    w = client.post("/billing/webhook", json={"type": "plan", "data": {"id": "x"}})
+    assert w.status_code == 200
+    assert w.json()["status"] == "ignored"

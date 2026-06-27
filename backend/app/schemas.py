@@ -30,6 +30,9 @@ class UserCreate(BaseModel):
     phone: Optional[str] = None
     payment_method: Optional[PaymentMethod] = None
     payment_number: Optional[str] = None
+    # Referidos: código de quien invitó + hash del dispositivo (anti-abuso).
+    referral_code: Optional[str] = Field(default=None, max_length=8)
+    device_hash: Optional[str] = Field(default=None, max_length=128)
 
 
 class UserUpdate(BaseModel):
@@ -59,6 +62,52 @@ class BillingMe(BaseModel):
     free_event_limit: int
     # None = ilimitado (premium)
     events_remaining: Optional[int] = None
+
+
+# Billing — catálogo y checkout
+class CreditPackRead(BaseModel):
+    code: str
+    credits: int
+    price: Decimal
+    title: str
+
+
+class BillingCatalog(BaseModel):
+    """Catálogo público de productos comprables (para pintar el paywall)."""
+    credit_packs: list[CreditPackRead] = Field(default_factory=list)
+    premium_code: str
+    premium_price: Decimal
+    premium_title: str
+    currency: str
+
+
+class CreditCheckoutRequest(BaseModel):
+    pack_code: str
+
+
+class CheckoutResponse(BaseModel):
+    """Resultado de crear un checkout: URL de pago de Mercado Pago."""
+    billing_payment_id: uuid.UUID
+    preference_id: str
+    init_point: str
+
+
+# Referidos
+class ReferralMe(BaseModel):
+    referral_code: str
+    link: str
+    pending: int
+    qualified: int
+    rewarded: int
+    reward_days: int
+
+
+# Banners
+class BannerRead(_ORM):
+    id: uuid.UUID
+    title: Optional[str] = None
+    image_url: str
+    link_url: Optional[str] = None
 
 
 # Groups

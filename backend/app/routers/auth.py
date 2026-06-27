@@ -6,6 +6,7 @@ from sqlalchemy import select
 from app.deps import CurrentClaims, CurrentUser, DBSession
 from app.models import User
 from app.schemas import UserCreate, UserRead, UserUpdate
+from app.services.referrals_service import generate_referral_code, register_referral
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -43,7 +44,19 @@ def register(payload: UserCreate, claims: CurrentClaims, db: DBSession) -> User:
         payment_method=payload.payment_method,
         payment_number=payload.payment_number,
     )
+    user.referral_code = generate_referral_code(db)
     db.add(user)
+    db.flush()
+
+    # Referido: si vino un código válido, crea el vínculo pendiente (anti-abuso al fondear).
+    if payload.referral_code:
+        register_referral(
+            db,
+            referral_code=payload.referral_code,
+            referred_user=user,
+            device_hash=payload.device_hash,
+        )
+
     db.commit()
     db.refresh(user)
     return user

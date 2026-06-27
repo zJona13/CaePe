@@ -19,6 +19,29 @@ class Settings(BaseSettings):
     # Monetización: tope de eventos creados (de por vida) en el plan free.
     free_event_limit: int = 5
 
+    # --- Mercado Pago ---
+    # En local usar las credenciales de PRUEBA (TEST-...); en prod las de producción.
+    # Si mp_access_token está vacío, los endpoints de checkout responden 503.
+    mp_access_token: str = ""
+    mp_public_key: str = ""
+    # "Clave secreta" del webhook (panel MP) para validar la firma x-signature.
+    # Si está vacía, NO se valida firma (útil en local/sandbox).
+    mp_webhook_secret: str = ""
+    mp_currency: str = "PEN"
+    # Sandbox usa sandbox_init_point en vez de init_point.
+    mp_sandbox: bool = True
+
+    # URL pública del backend (para notification_url del webhook MP).
+    api_public_url: str = "https://caepe.onrender.com"
+
+    # Premium: días que otorga un mes de premium y precio referencial.
+    premium_days: int = 30
+
+    # Referidos: días de premium que gana el referente por cada referido calificado,
+    # y tope de premios por referente en una ventana móvil de 12 meses.
+    referral_reward_days: int = 30
+    referral_yearly_cap: int = 12
+
     # Solo necesitas SUPABASE_URL y SUPABASE_JWT_SECRET en el .env.
     # El JWKS URL y el issuer se derivan de SUPABASE_URL (ver propiedades abajo).
     supabase_url: str = ""

@@ -2,6 +2,20 @@
 
 > Estado al 2026-06-26. Etapas 1–2 (esquema + límite del plan free) y el paywall mobile ya están hechos y desplegados/commiteados. Esto lista lo que falta para arrancar las etapas 3–5 (pagos reales).
 
+## ✅ CERRADO EN CÓDIGO (2026-06-27)
+Etapas 3–6 + mobile + landing implementadas y testeadas (backend 64 tests verdes; mobile `tsc` limpio).
+- **Etapa 3 — Créditos:** `services/mercadopago_service.py` (preferencia + firma webhook), `services/billing_service.py` (catálogo + grant idempotente), `billing_catalog.py` (packs `10=S/8`, `25=S/15`), `POST /billing/credits/checkout`, `POST /billing/webhook`. Tests en `test_billing.py`.
+- **Etapa 4 — Premium:** `POST /billing/premium/checkout` (`S/9.90`/mes), webhook acumula `premium_until += 30 días`.
+- **Etapa 5 — Referidos:** `services/referrals_service.py` (código al registrar, registro con `referral_code`+`device_hash`, calificación anti-abuso en `check_and_mark_funded`), `GET /referrals/me`. Tests en `test_referrals.py`.
+- **Etapa 6 — Banner:** `GET /banners` (audiencia/vigencia, oculto a premium). Tests en `test_banners.py`.
+- **Mobile:** `expo-web-browser`, paywall conectado al `init_point`, retorno + refetch (`lib/checkout.ts`), pantalla `app/referrals.tsx`, `components/AdBanner.tsx` en Home, campo de código de referido en el registro (`lib/device.ts`).
+- **Landing:** `billing-return.html` + `r.html` + rewrites en `vercel.json`.
+
+**Falta solo lo operativo (del usuario):** cargar credenciales MP reales en `.env`/Render, registrar el webhook en el panel MP, swap a credenciales de producción y rebuild del APK. Detalle abajo.
+
+---
+
+
 ## ✅ Ya hecho
 - **Backend etapa 1:** migración `0003` (campos de plan en `users` + tablas `billing_payments`, `referrals`, `app_banners`) — **aplicada en prod (Render)**.
 - **Backend etapa 2:** límite de 5 eventos (402 estructurado) + `GET /billing/me`. En vivo.

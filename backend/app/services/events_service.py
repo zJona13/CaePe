@@ -110,8 +110,14 @@ def check_and_mark_funded(db: Session, event_id: uuid.UUID) -> bool:
     if not participants:
         return False
     if all(p.payment_status == ParticipantPaymentStatus.paid for p in participants):
+        was_funded = event.status == EventStatus.funded
         event.status = EventStatus.funded
         db.flush()
+        if not was_funded:
+            # Import perezoso: referrals_service depende de este módulo.
+            from app.services.referrals_service import qualify_referrals_on_funded
+
+            qualify_referrals_on_funded(db, event.organizer_id)
         return True
     return False
 
