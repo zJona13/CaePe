@@ -5,6 +5,7 @@ import uuid
 from fastapi import APIRouter, HTTPException, status
 from sqlalchemy import select
 
+from app.config import settings
 from app.deps import CurrentUser, DBSession, OptionalUser
 from app.models import (
     Event,
@@ -216,7 +217,7 @@ def share_message(event_id: uuid.UUID, current: CurrentUser, db: DBSession) -> S
         db.commit()
         db.refresh(invitation)
     return ShareMessage(
-        message=build_whatsapp_message(event, invitation.invite_code),
+        message=build_whatsapp_message(event, invitation.invite_code, settings.public_web_url),
         invite_code=invitation.invite_code,
     )
 

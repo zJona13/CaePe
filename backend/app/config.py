@@ -7,6 +7,11 @@ class Settings(BaseSettings):
     app_name: str = "CaePe Backend"
     database_url: str = "postgresql+psycopg://caepe:caepe@localhost:5432/caepe"
 
+    # URL web pública usada para construir el link de invitación que se comparte
+    # por WhatsApp. Debe ser un dominio real (https://...) que sirva la lectura
+    # pública del evento, para que funcione aunque el invitado no tenga la app.
+    public_web_url: str = "https://caepe.lat"
+
     # Solo necesitas SUPABASE_URL y SUPABASE_JWT_SECRET en el .env.
     # El JWKS URL y el issuer se derivan de SUPABASE_URL (ver propiedades abajo).
     supabase_url: str = ""
